@@ -1,0 +1,245 @@
+# Nexus-MCP Configuration
+# Copy this file to config.yaml and customize
+
+# ================================
+# Server Configuration
+# ================================
+server:
+  name: "nexus-mcp"
+  version: "1.0.0"
+  log_level: "info"
+  environment: "development"
+
+# ================================
+# Logging Configuration
+# ================================
+logging:
+  format: "json"  # json | text
+  output: "stdout"  # stdout | file | both
+  file: "logs/nexus.log"
+  level: "info"  # error | warn | info | debug
+  include_timestamp: true
+  include_level: true
+
+# ================================
+# Filesystem Configuration
+# ================================
+filesystem:
+  enabled: true
+  max_file_size: "100MB"
+  allowed_paths:
+    - "/tmp"
+    - "./workspace"
+    - "./data"
+  denied_paths:
+    - "/etc"
+    - "/sys"
+    - "/proc"
+  watch_enabled: false
+  watch_debounce: 1000
+
+# ================================
+# HTTP Configuration
+# ================================
+http:
+  enabled: true
+  timeout: 30000  # milliseconds
+  max_redirects: 5
+  user_agent: "Nexus-MCP/1.0"
+  proxy:
+    host: ""
+    port: 8080
+    username: ""
+    password: ""
+  ssl:
+    verify: true
+    cert_path: ""
+    key_path: ""
+  cache:
+    enabled: true
+    ttl: 300000  # 5 minutes
+
+# ================================
+# Git Configuration
+# ================================
+git:
+  enabled: true
+  default_branch: "main"
+  ssh_key_path: "~/.ssh/id_rsa"
+  ssh_key_passphrase: ""
+  github:
+    token: ""
+    api_url: "https://api.github.com"
+  gitlab:
+    token: ""
+    api_url: "https://gitlab.com/api/v4"
+  bitbucket:
+    username: ""
+    app_password: ""
+    api_url: "https://api.bitbucket.org/2.0"
+
+# ================================
+# Database Configuration
+# ================================
+database:
+  enabled: true
+  default_connection: "postgresql"
+  pool_size: 10
+  pool_min: 2
+  connection_timeout: 30000
+
+  # PostgreSQL
+  postgresql:
+    host: "localhost"
+    port: 5432
+    database: "nexus"
+    user: "nexus"
+    password: ""
+    ssl: false
+    ssl_cert: ""
+    ssl_key: ""
+    ssl_ca: ""
+
+  # MySQL/MariaDB
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "nexus"
+    user: "nexus"
+    password: ""
+    ssl: false
+    charset: "utf8mb4"
+
+  # SQLite
+  sqlite:
+    path: "./data/nexus.db"
+    mode: "read-write"
+
+  # SQL Server
+  sqlserver:
+    host: "localhost"
+    port: 1433
+    database: "nexus"
+    user: "nexus"
+    password: ""
+    encrypt: true
+    trust_server_certificate: false
+
+  # MongoDB
+  mongodb:
+    uri: "mongodb://localhost:27017/nexus"
+    user: ""
+    password: ""
+    auth_source: "admin"
+    ssl: false
+
+# ================================
+# System Configuration
+# ================================
+system:
+  enabled: true
+  allow_shell_commands: true
+  max_execution_time: 60000  # milliseconds
+  allowed_commands:
+    - "ls"
+    - "cd"
+    - "cat"
+    - "grep"
+    - "find"
+    - "head"
+    - "tail"
+    - "wc"
+  denied_commands:
+    - "rm"
+    - "dd"
+    - "format"
+    - "mkfs"
+    - "fdisk"
+  process_monitoring: true
+  service_management: false
+
+# ================================
+# AI Configuration
+# ================================
+ai:
+  enabled: true
+  default_provider: "anthropic"
+  max_tokens: 4096
+  temperature: 0.7
+  top_p: 1.0
+  stream: false
+
+  # Anthropic
+  anthropic:
+    api_key: ""
+    model: "claude-3-sonnet-20240229"
+    max_tokens: 4096
+    temperature: 0.7
+    api_url: "https://api.anthropic.com"
+
+  # OpenAI
+  openai:
+    api_key: ""
+    model: "gpt-4-turbo-preview"
+    max_tokens: 4096
+    temperature: 0.7
+    api_url: "https://api.openai.com/v1"
+
+  # Embeddings
+  embeddings:
+    provider: "openai"
+    model: "text-embedding-3-small"
+    dimensions: 1536
+    api_url: "https://api.openai.com/v1"
+
+  # Vector Store
+  vector_store:
+    type: "local"  # local | pinecone | weaviate
+    path: "./data/vectors"
+    pinecone_api_key: ""
+    pinecone_environment: ""
+    weaviate_url: ""
+    weaviate_api_key: ""
+
+# ================================
+# Security Configuration
+# ================================
+security:
+  enable_rate_limiting: true
+  rate_limit_requests: 100
+  rate_limit_window: 60000  # 1 minute
+  enable_audit_log: true
+  audit_log_path: "logs/audit.log"
+  encrypt_secrets: true
+  secret_key: ""
+
+# ================================
+# Performance Configuration
+# ================================
+performance:
+  cache_enabled: true
+  cache_ttl: 300000  # 5 minutes
+  cache_max_size: 1000
+  concurrent_requests: 10
+  enable_compression: true
+  enable_minification: false
+
+# ================================
+# Monitoring Configuration
+# ================================
+monitoring:
+  enabled: false
+  metrics_enabled: false
+  metrics_port: 9090
+  tracing_enabled: false
+  tracing_exporter: "jaeger"  # jaeger | zipkin | otlp
+  tracing_endpoint: ""
+
+# ================================
+# Development Configuration
+# ================================
+development:
+  hot_reload: true
+  debug_mode: false
+  test_mode: false
+  mock_external_services: false
