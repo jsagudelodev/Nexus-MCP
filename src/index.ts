@@ -24,7 +24,10 @@ import { loadConfig, getConfig } from './config.js';
 import { initializeLogger, logger } from './logger.js';
 import { handleError, withErrorHandling } from './utils/error-handler.js';
 import { validateSchema } from './utils/validation.js';
-import { filesystemBasicTools } from './tools/filesystem/index.js';
+import { filesystemTools } from './tools/filesystem/index.js';
+import { httpTools } from './tools/http/index.js';
+import { gitTools } from './tools/git/index.js';
+import { systemTools } from './tools/system/index.js';
 
 // ============================================================================
 // Tool Registry
@@ -294,10 +297,34 @@ class NexusMCPServer {
 
       // Register filesystem tools if enabled
       if (config.tools.filesystem.enabled) {
-        for (const tool of filesystemBasicTools) {
+        for (const tool of filesystemTools) {
           this.toolRegistry.register(tool);
         }
-        logger.info('Filesystem tools registered', { count: filesystemBasicTools.length });
+        logger.info('Filesystem tools registered', { count: filesystemTools.length });
+      }
+
+      // Register HTTP tools if enabled
+      if (config.tools.http.enabled) {
+        for (const tool of httpTools) {
+          this.toolRegistry.register(tool);
+        }
+        logger.info('HTTP tools registered', { count: httpTools.length });
+      }
+
+      // Register Git tools if enabled
+      if (config.tools.git.enabled) {
+        for (const tool of gitTools) {
+          this.toolRegistry.register(tool);
+        }
+        logger.info('Git tools registered', { count: gitTools.length });
+      }
+
+      // Register System tools if enabled
+      if (config.tools.system.enabled) {
+        for (const tool of systemTools) {
+          this.toolRegistry.register(tool);
+        }
+        logger.info('System tools registered', { count: systemTools.length });
       }
 
       this.initialized = true;

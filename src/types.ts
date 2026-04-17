@@ -108,6 +108,8 @@ export interface HttpConfig {
   timeout: number;
   max_redirects: number;
   user_agent: string;
+  allowed_domains: string[];
+  denied_domains: string[];
   proxy: {
     host: string;
     port: number;

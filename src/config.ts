@@ -54,6 +54,8 @@ const HttpConfigSchema = z.object({
   timeout: z.number().default(30000),
   max_redirects: z.number().default(5),
   user_agent: z.string().default('Nexus-MCP/1.0'),
+  allowed_domains: z.array(z.string()).default([]),
+  denied_domains: z.array(z.string()).default([]),
   proxy: z.object({
     host: z.string().default(''),
     port: z.number().default(8080),
@@ -263,6 +265,8 @@ const defaultConfig: NexusConfig = {
       timeout: 30000,
       max_redirects: 5,
       user_agent: 'Nexus-MCP/1.0',
+      allowed_domains: [],
+      denied_domains: [],
       proxy: {
         host: '',
         port: 8080
