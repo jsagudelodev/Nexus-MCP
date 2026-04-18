@@ -224,12 +224,13 @@ El indicador `[ctx:N turns]` muestra cuántos intercambios previos están activo
 | Comando | Descripción |
 |---|---|
 | `/menu` | Volver al menú de proveedores |
+| `/agent` | Activar/desactivar modo agente con tools (solo OpenAI) |
 | `/tools` | Listar los 72 tools disponibles con descripción |
 | `/tools <filtro>` | Filtrar tools por nombre o descripción (ej: `/tools git`, `/tools file`) |
 | `/reset` | Limpiar el contexto de la conversación sin salir de la sesión |
 | `/clear` | Limpiar la pantalla |
 | `/history` | Ver los últimos 6 mensajes del historial persistente |
-| `/tokens` | Ver tokens usados en la sesión y contexto activo |
+| `/tokens` | Ver tokens usados en la sesión, contexto activo y estado del agente |
 | `/help` | Mostrar la lista de comandos |
 | `/exit` | Salir de la CLI |
 
@@ -250,6 +251,53 @@ El indicador `[ctx:N turns]` muestra cuántos intercambios previos están activo
 
   Total: 15 tools para "git"
 ```
+
+### Modo Agente — OpenAI Function Calling
+
+Cuando usas OpenAI como proveedor, puedes activar el **modo agente** con `/agent`. En este modo la IA tiene acceso a los tools de Nexus-MCP y los invoca automáticamente cuando los necesita para responder.
+
+```
+  ✓ Modo agente ACTIVADO
+  La IA usará los 14 tools de Nexus-MCP cuando los necesite
+
+[🔧 agente] Tú  › dame información del sistema
+
+  🔧 nexus_system_info  {}
+     → {"cpu":{"model":"12th Gen Intel i7-1255U","count":12}...
+  🔧 nexus_system_memory_info  {}
+     → {"freeGB":"10.27","usedGB":"29.42",...
+
+AI   › El sistema tiene un i7-1255U con 12 núcleos y 10.27 GB de RAM libre.
+  ↳ 2341ms  ·  498 tokens
+
+[🔧 agente] Tú  › genera un UUID para esta sesión
+
+  🔧 nexus_uuid_generate  {}
+     → {"uuid":"9d7dc0bf-f432-44da-a1d1-d9776d86ed8f",...
+
+AI   › Aquí tienes tu UUID: `9d7dc0bf-f432-44da-a1d1-d9776d86ed8f`
+  ↳ 921ms  ·  201 tokens
+
+[🔧 agente] Tú  › /agent   ← toggle OFF
+  ○ Modo agente desactivado
+```
+
+#### Cómo funciona internamente (4 pasos)
+
+```
+[1] Tú envías una solicitud en lenguaje natural
+[2] GPT analiza y emite tool_calls con args validados por JSON schema
+[3] Nexus-MCP ejecuta los tools (en paralelo si son varios)
+[4] GPT recibe los resultados y redacta la respuesta final
+```
+
+**Tools disponibles en modo agente** (14 tools de utilities + system):
+- `nexus_uuid_generate`, `nexus_hash_generate`, `nexus_timestamp`, `nexus_url_parse`
+- `nexus_json_parse`, `nexus_json_stringify`, `nexus_base64_encode`, `nexus_base64_decode`
+- `nexus_system_info`, `nexus_system_memory_info`, `nexus_system_cpu_info`
+- `nexus_system_disk_info`, `nexus_system_network_info`, `nexus_system_os_info`
+
+> **Nota**: Solo disponible con OpenAI. GPT puede invocar múltiples tools en paralelo (parallel function calling) — el agente los ejecuta todos y devuelve todos los resultados antes de formular la respuesta.
 
 ### Historial persistente
 

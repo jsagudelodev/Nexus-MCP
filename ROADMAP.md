@@ -1232,6 +1232,40 @@ Mejoras avanzadas para escalabilidad y características enterprise.
 
 ---
 
+## 🤖 **Modo Agente con Function Calling (Abril 2026 — Sesión de AI Tools)**
+
+### **Nueva demo: `examples/ai-agent-demo.js`**
+- ✅ **Llamada directa a tools**: Muestra invocación de `nexus_uuid_generate`, `nexus_hash_generate`, `nexus_timestamp`, `nexus_system_info` sin intervención de IA
+- ✅ **Agente con OpenAI Function Calling nativo**: Usa `openai.chat.completions.create` con `tools:` para que GPT elija y llame los tools con args validados por JSON schema
+- ✅ **`zodToJsonSchema`**: Conversión automática de los schemas Zod de Nexus-MCP al formato JSON Schema que requiere OpenAI
+- ✅ **Parallel tool calling**: Soporte para múltiples `tool_calls` en una sola respuesta (GPT puede invocar varios tools simultáneamente)
+
+### **Modo Agente en CLI Interactiva (`/agent`)**
+- ✅ **Comando `/agent`**: Toggle que activa/desactiva el modo agente en la sesión actual (solo disponible con proveedor OpenAI)
+- ✅ **Indicador visual**: Prompt muestra `[🔧 agente]` cuando el modo está activo
+- ✅ **Flujo de 4 pasos**: Solicitud → GPT emite `tool_calls` → Nexus-MCP ejecuta → GPT formula respuesta final
+- ✅ **Múltiples tool calls en paralelo**: `Promise.all` sobre todos los `tool_calls` del assistant message; responde a todos los `tool_call_id` antes de continuar
+- ✅ **Visualización inline**: Cada tool invocado se muestra como `🔧 nexus_tool_name  args → resultado_truncado` antes de la respuesta final
+- ✅ **`/tokens` actualizado**: Muestra estado del modo agente (ACTIVO/inactivo) con número de tools disponibles
+
+### **Bug Fixes**
+- ✅ **Parallel function calling**: Corregido error `400 — An assistant message with 'tool_calls' must be followed by tool messages responding to each 'tool_call_id'` — el código ahora ejecuta TODOS los tool_calls en paralelo y responde a todos antes de la segunda llamada
+- ✅ **Schema Zod → OpenAI**: Reemplazado sanitización manual por `zodToJsonSchema({ target: 'openApi3' })` para conversión correcta de tipos, enums y campos requeridos
+- ✅ **Tools excluidos**: `nexus_execute_command` y `nexus_list_processes` filtrados del catálogo de agente por tener schemas con `minimum: true` incompatible con OpenAI
+
+### **Documentación**
+- ✅ **`docs/ai-tools-guide.md`**: Nueva sección "Modo Agente — OpenAI Function Calling" con ejemplo de sesión, explicación del flujo de 4 pasos, lista de 14 tools disponibles y nota sobre parallel function calling
+- ✅ **Tabla de comandos actualizada**: `/agent` añadido a la tabla con descripción
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo agente con function calling nativo (14 tools) + multi-turn + 10 comandos slash
+- **ai-agent-demo.js**: Demo ejecutable mostrando llamada directa + agente IA
+- **Build**: ✅ Exitoso
+- **Documentación**: 98% completa
+
+---
+
 ## 🏛️ **Principios Arquitectónicos**
 
 Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad production-grade. Ver [docs/architectural-principles.md](./docs/architectural-principles.md) para detalles completos:
@@ -1259,6 +1293,6 @@ Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad 
 
 ---
 
-**Última Actualización**: 2026-04-18
+**Última Actualización**: 2026-04-18 (Sesión AI Tools — Modo Agente)
 **Versión**: 1.0.0-alpha
 **Autor**: Nexus Team

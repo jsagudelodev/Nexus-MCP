@@ -43,6 +43,7 @@ const openaiToolDefs = AGENT_TOOL_LIST.map(t => ({
 }));
 
 // ── Ejecuta un turno con OpenAI Function Calling ──────────────────────────────
+// Soporta múltiples tool_calls paralelos (GPT puede llamar varios tools a la vez)
 async function runAgentTurn(model, sessionMessages, userInput) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const messages = [
@@ -58,29 +59,39 @@ async function runAgentTurn(model, sessionMessages, userInput) {
   const usage1 = first.usage?.total_tokens || 0;
 
   if (!msg.tool_calls?.length) {
-    return { text: msg.content, tokens: usage1, toolUsed: null };
+    return { text: msg.content, tokens: usage1, toolsUsed: [] };
   }
 
-  const call = msg.tool_calls[0];
-  const toolName = call.function.name;
-  const toolArgs = JSON.parse(call.function.arguments);
-  const tool = agentToolIndex[toolName];
+  // Ejecutar TODOS los tool_calls en paralelo
+  const executed = await Promise.all(msg.tool_calls.map(async call => {
+    const toolName = call.function.name;
+    const toolArgs = JSON.parse(call.function.arguments);
+    const tool = agentToolIndex[toolName];
+    let result;
+    try {
+      const r = tool ? await tool.handler(toolArgs) : null;
+      result = r?.success ? r.data : { error: r?.error?.message || `Tool not found: ${toolName}` };
+    } catch (err) { result = { error: err.message }; }
+    return { call, toolName, toolArgs, result };
+  }));
 
-  let toolResult;
-  try {
-    const r = await tool.handler(toolArgs);
-    toolResult = r.success ? r.data : { error: r.error?.message };
-  } catch (err) { toolResult = { error: err.message }; }
+  // Responder a TODOS los tool_call_ids (OpenAI lo requiere)
+  const toolMessages = executed.map(({ call, result }) => ({
+    role: 'tool',
+    tool_call_id: call.id,
+    content: JSON.stringify(result),
+  }));
 
   const second = await openai.chat.completions.create({
     model,
-    messages: [
-      ...messages, msg,
-      { role: 'tool', tool_call_id: call.id, content: JSON.stringify(toolResult) },
-    ],
+    messages: [...messages, msg, ...toolMessages],
   });
   const usage2 = second.usage?.total_tokens || 0;
-  return { text: second.choices[0].message.content, tokens: usage1 + usage2, toolUsed: { name: toolName, args: toolArgs, result: toolResult } };
+  return {
+    text: second.choices[0].message.content,
+    tokens: usage1 + usage2,
+    toolsUsed: executed.map(e => ({ name: e.toolName, args: e.toolArgs, result: e.result })),
+  };
 }
 
 const ALL_TOOLS = [
@@ -319,10 +330,13 @@ async function chatSession(providerKey, model) {
         text   = turn.text;
         tokens = turn.tokens;
 
-        if (turn.toolUsed) {
-          const r = JSON.stringify(turn.toolUsed.result).slice(0, 80);
-          console.log(`\n  ${c.yellow}🔧 ${turn.toolUsed.name}${c.reset}  ${c.dim}args: ${JSON.stringify(turn.toolUsed.args)}${c.reset}`);
-          console.log(`  ${c.dim}   → ${r}…${c.reset}`);
+        if (turn.toolsUsed?.length) {
+          console.log();
+          turn.toolsUsed.forEach(t => {
+            const r = JSON.stringify(t.result).slice(0, 80);
+            console.log(`  ${c.yellow}🔧 ${t.name}${c.reset}  ${c.dim}${JSON.stringify(t.args)}${c.reset}`);
+            console.log(`  ${c.dim}   → ${r}…${c.reset}`);
+          });
         }
       } catch (err) {
         sessionMessages.pop();
