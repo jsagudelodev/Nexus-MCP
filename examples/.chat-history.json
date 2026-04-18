@@ -1,0 +1,91 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-18T01:56:55.870Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2026-04-18T01:56:55.870Z",
+      "provider": "openai",
+      "tokens": 20
+    },
+    {
+      "role": "user",
+      "content": "help",
+      "timestamp": "2026-04-18T01:57:53.149Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Of course! What do you need help with?",
+      "timestamp": "2026-04-18T01:57:53.149Z",
+      "provider": "openai",
+      "tokens": 42
+    },
+    {
+      "role": "user",
+      "content": "que  herramientas disponibles",
+      "timestamp": "2026-04-18T02:01:28.282Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¿Podrías ser más específico sobre qué tipo de herramientas estás buscando? ¿Estás buscando herramientas en línea, herramientas de software, herramientas físicas, etc.? ¡Estaré encantado de ayudarte una vez que tenga más información!",
+      "timestamp": "2026-04-18T02:01:28.282Z",
+      "provider": "openai",
+      "tokens": 110
+    },
+    {
+      "role": "user",
+      "content": "Pedir listar archivos → Llama a nexus_read_directory",
+      "timestamp": "2026-04-18T02:03:00.818Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¿Estás buscando una forma de listar archivos en un directorio específico en Nexus? Puedes llamar a la función `nexus_read_directory` para obtener una lista de archivos en un directorio en particular. Esta función te permitirá acceder a la información de los archivos dentro de ese directorio. ¿Necesitas ayuda con algún paso específico para utilizar esta función? ¡Estoy aquí para ayudarte!",
+      "timestamp": "2026-04-18T02:03:00.818Z",
+      "provider": "openai",
+      "tokens": 215
+    },
+    {
+      "role": "user",
+      "content": "Lee el archivo package.json",
+      "timestamp": "2026-04-18T02:03:18.722Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Para leer el archivo `package.json`, puedes utilizar un lenguaje de programación como JavaScript y Node.js. Puedes utilizar el módulo `fs` (File System) de Node.js para leer el contenido del archivo `package.json`. Aquí tienes un ejemplo de cómo hacerlo:\n\n```javascript\nconst fs = require('fs');\n\nfs.readFile('package.json', 'utf8', (err, data) => {\n  if (err) {\n    console.error(err);\n    return;\n  }\n\n  const packageJson = JSON.parse(data);\n  console.log(packageJson);\n});\n```\n\nEn este ejemplo, primero importamos el módulo `fs`, luego utilizamos el método `fs.readFile` para leer el contenido del archivo `package.json` en formato UTF-8. Una vez que tenemos los datos del archivo, los convertimos a un objeto JSON utilizando `JSON.parse` y luego podemos acceder a la información del archivo `package.json`.\n\nEspero que esta información te sea útil. ¡Déjame saber si necesitas ayuda adicional!",
+      "timestamp": "2026-04-18T02:03:18.722Z",
+      "provider": "openai",
+      "tokens": 444
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-18T02:05:51.400Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2026-04-18T02:05:51.400Z",
+      "provider": "openai",
+      "tokens": 462
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-18T02:12:08.330Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2026-04-18T02:12:08.330Z",
+      "provider": "openai",
+      "tokens": 462
+    }
+  ],
+  "totalTokens": 1755,
+  "messageCount": 7,
+  "lastUpdated": "2026-04-18T02:12:08.330Z"
+}

@@ -132,12 +132,12 @@ const logger = winston.createLogger({
  * Initialize logger with transports
  */
 export function initializeLogger(): void {
-  const logFormat = (process.env.NEXUS_LOG_FORMAT as 'json' | 'text') || 'json';
+  const logFormat = (process.env.NEXUS_LOG_FORMAT as 'json' | 'text') || 'text';
   const logOutput = process.env.NEXUS_LOG_OUTPUT || 'stdout';
   const logFile = process.env.NEXUS_LOG_FILE || 'logs/nexus.log';
 
-  // Add console transport
-  if (logOutput === 'stdout' || logOutput === 'both') {
+  // Add console transport (default to stdout if not specified)
+  if (logOutput === 'stdout' || logOutput === 'both' || !logOutput) {
     logger.add(createConsoleTransport(logFormat));
   }
 

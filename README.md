@@ -208,18 +208,76 @@ npm run lint
 
 - **Current Version**: 1.0.0-alpha
 - **Development Status**: Active Development
-- **Core Progress**: 34% (6/12 phases completed, 1 in progress)
-- **Implemented Tools**: 49 production-ready, 8 code-implemented (pending config)
+- **Core Progress**: 36% (9/12 phases completed)
+- **Implemented Tools**: 57 production-ready, 8 code-implemented (pending config)
 - **Target Tools**: 50+ ✅ (exceeded)
-- **Test Coverage**: 36 tests implemented (35 unit + 1 integration)
-- **Test Status**: ✅ All passing
+- **AI Integration**: Ollama + Gemini + OpenAI + Anthropic Claude ✅ (8 tools)
+- **Enhanced CLI**: Interactive AI tools CLI with colors and metrics ✅
+- **Test Coverage**: 49 tests implemented (35 unit + 1 integration + 13 E2E)
+- **Test Status**: ✅ All passing (49/49)
+- **Documentation**: 85% complete (Installation, Configuration, API, Examples, AI Guide)
 - **Build Status**: ✅ Passing
 - **Executable**: ✅ Ready for deployment
 - **CLI**: ✅ Functional
 
 See [ROADMAP.md](./ROADMAP.md) for detailed progress.
 
-## 🤝 **Contributing**
+## � **AI Tools Integration**
+
+Nexus-MCP includes integration with 4 major AI providers:
+
+- **Ollama** (2 tools): Local LLMs - Chat + List Models
+- **Gemini** (2 tools): Google AI - Chat + List Models  
+- **OpenAI** (2 tools): GPT Models - Chat + List Models
+- **Anthropic** (2 tools): Claude Models - Chat + List Models
+
+### Quick Start with AI Tools
+
+```bash
+# Configure API keys
+export OPENAI_API_KEY="your-key"
+export GEMINI_API_KEY="your-key"
+export ANTHROPIC_API_KEY="your-key"
+export OLLAMA_HOST="http://localhost:11434"
+
+# Run the interactive AI CLI
+node examples/ai-interactive-cli.js
+
+# Or run the enhanced demo
+node examples/ai-enhanced-demo.js
+```
+
+See [AI Tools Guide](./docs/ai-tools-guide.md) for detailed documentation.
+
+## 🔌 **MCP Integration**
+
+Nexus-MCP is an MCP (Model Context Protocol) server that allows AI assistants like Claude Code to use its 57 tools.
+
+### Quick Start with MCP
+
+1. **Start the server**:
+```bash
+npm start
+```
+
+2. **Configure Claude Desktop** to connect to Nexus-MCP
+
+See [MCP Configuration Guide](./docs/mcp-configuration-guide.md) for detailed setup instructions.
+
+### Available Tool Categories
+
+- **Filesystem** (18 tools): Read, write, list, search files
+- **HTTP** (16 tools): Requests, scraping, APIs
+- **Git** (15 tools): Clone, commit, branches, PRs
+- **System** (8 tools): Commands, processes, system info
+- **AI** (8 tools): Chat with Ollama, Gemini, OpenAI, Anthropic
+- **Utilities** (8 tools): JSON, YAML, compression, encryption
+
+
+
+
+
+## �🤝 **Contributing**
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
 

@@ -28,6 +28,7 @@ import { filesystemTools } from './tools/filesystem/index.js';
 import { httpTools } from './tools/http/index.js';
 import { gitTools } from './tools/git/index.js';
 import { systemTools } from './tools/system/index.js';
+import { aiTools } from './tools/ai/index.js';
 
 // ============================================================================
 // Tool Registry
@@ -325,6 +326,14 @@ class NexusMCPServer {
           this.toolRegistry.register(tool);
         }
         logger.info('System tools registered', { count: systemTools.length });
+      }
+
+      // Register AI tools if enabled
+      if (config.tools.ai.enabled) {
+        for (const tool of aiTools) {
+          this.toolRegistry.register(tool);
+        }
+        logger.info('AI tools registered', { count: aiTools.length });
       }
 
       this.initialized = true;

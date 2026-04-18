@@ -1,0 +1,381 @@
+# AI Tools Guide
+
+This guide explains how to interact with AI tools in Nexus-MCP.
+
+## Overview
+
+Nexus-MCP provides integration with 4 major AI providers:
+
+1. **Ollama** - Local LLMs (runs on your machine)
+2. **Gemini** - Google AI (cloud-based)
+3. **OpenAI** - GPT models (cloud-based)
+4. **Anthropic** - Claude models (cloud-based)
+
+## Available Tools
+
+### Ollama Tools
+
+#### nexus_ollama_chat
+Chat with local LLM models using Ollama.
+
+**Parameters:**
+- `prompt` (string, required): The prompt to send to the model
+- `model` (string, default: "llama2"): Ollama model name (e.g., llama2, mistral, codellama)
+- `stream` (boolean, default: false): Whether to stream the response
+- `options` (object, optional):
+  - `temperature` (number, 0-1): Sampling temperature
+  - `top_p` (number, 0-1): Top P sampling
+  - `num_predict` (number): Maximum tokens to predict
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusOllamaChat({
+  prompt: "Explain quantum computing in simple terms",
+  model: "llama2",
+  temperature: 0.7,
+  stream: false
+});
+```
+
+#### nexus_ollama_list_models
+List available Ollama models.
+
+**Parameters:**
+- `detailed` (boolean, default: false): Whether to return detailed model information
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusOllamaListModels({ detailed: true });
+console.log(result.data.models);
+```
+
+### Gemini Tools
+
+#### nexus_gemini_chat
+Chat with Google Gemini AI models.
+
+**Parameters:**
+- `prompt` (string, required): The prompt to send to the model
+- `model` (string, default: "gemini-pro"): Gemini model name (e.g., gemini-pro, gemini-pro-vision)
+- `temperature` (number, 0-2): Temperature for generation
+- `topP` (number, 0-1): Top P for generation
+- `maxOutputTokens` (number): Maximum output tokens
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusGeminiChat({
+  prompt: "Write a haiku about programming",
+  model: "gemini-pro",
+  temperature: 0.7,
+  topP: 0.9,
+  maxOutputTokens: 100
+});
+```
+
+#### nexus_gemini_list_models
+List available Gemini models.
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusGeminiListModels({});
+console.log(result.data.models);
+```
+
+### OpenAI Tools
+
+#### nexus_openai_chat
+Chat with OpenAI GPT models.
+
+**Parameters:**
+- `prompt` (string, required): The prompt to send to the model
+- `model` (string, default: "gpt-3.5-turbo"): OpenAI model name (e.g., gpt-3.5-turbo, gpt-4)
+- `temperature` (number, 0-2): Temperature for generation
+- `maxTokens` (number): Maximum tokens to generate
+- `stream` (boolean, default: false): Whether to stream the response
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusOpenAIChat({
+  prompt: "Explain the difference between HTTP and HTTPS",
+  model: "gpt-3.5-turbo",
+  temperature: 0.7,
+  maxTokens: 200,
+  stream: false
+});
+console.log(result.data.response);
+console.log(result.data.usage); // Token usage statistics
+```
+
+#### nexus_openai_list_models
+List available OpenAI models.
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusOpenAIListModels({});
+console.log(`Found ${result.data.models.length} models`);
+console.log(result.data.models.map(m => m.id));
+```
+
+### Anthropic Tools
+
+#### nexus_anthropic_chat
+Chat with Anthropic Claude models.
+
+**Parameters:**
+- `prompt` (string, required): The prompt to send to the model
+- `model` (string, default: "claude-3-haiku-20240307"): Anthropic model name
+- `temperature` (number, 0-1): Temperature for generation
+- `maxTokens` (number): Maximum tokens to generate
+- `stream` (boolean, default: false): Whether to stream the response
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusAnthropicChat({
+  prompt: "What are the benefits of TypeScript over JavaScript?",
+  model: "claude-3-sonnet-20240229",
+  temperature: 0.7,
+  maxTokens: 300,
+  stream: false
+});
+console.log(result.data.response);
+console.log(result.data.usage); // Token usage statistics
+```
+
+#### nexus_anthropic_list_models
+List available Anthropic models.
+
+**Example:**
+```javascript
+const result = await aiHandlers.nexusAnthropicListModels({});
+console.log(result.data.models);
+```
+
+## Configuration
+
+### Environment Variables
+
+Configure the following environment variables to use AI tools:
+
+```bash
+# Ollama (optional - for local LLMs)
+export OLLAMA_HOST=http://localhost:11434
+
+# Gemini (required)
+export GEMINI_API_KEY=your_gemini_api_key
+
+# OpenAI (required)
+export OPENAI_API_KEY=your_openai_api_key
+
+# Anthropic (required)
+export ANTHROPIC_API_KEY=your_anthropic_api_key
+```
+
+### Getting API Keys
+
+**OpenAI:**
+1. Go to https://platform.openai.com/api-keys
+2. Create an account or sign in
+3. Generate a new API key
+
+**Gemini:**
+1. Go to https://makersuite.google.com/app/apikey
+2. Create a project or sign in
+3. Generate an API key
+
+**Anthropic:**
+1. Go to https://console.anthropic.com/
+2. Create an account or sign in
+3. Generate an API key
+
+**Ollama (Local):**
+1. Download from https://ollama.ai/
+2. Install on your machine
+3. Start the Ollama server: `ollama serve`
+4. Pull a model: `ollama pull llama2`
+
+## Usage Examples
+
+### Example 1: Simple Chat with OpenAI
+
+```javascript
+import { aiHandlers } from '@nexus-mcp/server';
+
+const response = await aiHandlers.nexusOpenAIChat({
+  prompt: "What is the capital of France?",
+  model: "gpt-3.5-turbo",
+  temperature: 0.7,
+  maxTokens: 100
+});
+
+console.log(response.data.response);
+// Output: "The capital of France is Paris."
+```
+
+### Example 2: Compare Responses from Multiple Providers
+
+```javascript
+import { aiHandlers } from '@nexus-mcp/server';
+
+const prompt = "Explain the concept of recursion in programming";
+
+const openai = await aiHandlers.nexusOpenAIChat({
+  prompt,
+  model: "gpt-3.5-turbo"
+});
+
+const anthropic = await aiHandlers.nexusAnthropicChat({
+  prompt,
+  model: "claude-3-haiku-20240307"
+});
+
+console.log("OpenAI:", openai.data.response);
+console.log("Anthropic:", anthropic.data.response);
+```
+
+### Example 3: Streaming Response
+
+```javascript
+import { aiHandlers } from '@nexus-mcp/server';
+
+const response = await aiHandlers.nexusOpenAIChat({
+  prompt: "Write a short story about a robot",
+  model: "gpt-3.5-turbo",
+  stream: true
+});
+
+// When stream is true, the response is accumulated and returned
+console.log(response.data.response);
+```
+
+### Example 4: List All Available Models
+
+```javascript
+import { aiHandlers } from '@nexus-mcp/server';
+
+// OpenAI
+const openaiModels = await aiHandlers.nexusOpenAIListModels({});
+console.log("OpenAI models:", openaiModels.data.models.map(m => m.id));
+
+// Gemini
+const geminiModels = await aiHandlers.nexusGeminiListModels({});
+console.log("Gemini models:", geminiModels.data.models.map(m => m.name));
+
+// Anthropic
+const anthropicModels = await aiHandlers.nexusAnthropicListModels({});
+console.log("Anthropic models:", anthropicModels.data.models.map(m => m.name));
+
+// Ollama (if installed)
+const ollamaModels = await aiHandlers.nexusOllamaListModels({});
+console.log("Ollama models:", ollamaModels.data.models.map(m => m.name));
+```
+
+## Best Practices
+
+1. **Choose the Right Model**:
+   - Use `gpt-3.5-turbo` or `claude-3-haiku` for simple tasks (faster, cheaper)
+   - Use `gpt-4` or `claude-3-opus` for complex tasks (more capable)
+
+2. **Temperature Settings**:
+   - Lower temperature (0.1-0.3) for more deterministic responses
+   - Higher temperature (0.7-1.0) for more creative responses
+
+3. **Token Management**:
+   - Set reasonable `maxTokens` limits to control costs
+   - Monitor `usage` statistics to track token consumption
+
+4. **Error Handling**:
+   - Always check `success` field in response
+   - Handle missing API keys gracefully
+   - Implement retry logic for rate limits
+
+5. **Security**:
+   - Never commit API keys to version control
+   - Use environment variables or secret managers
+   - Rotate API keys regularly
+
+## Common Use Cases
+
+### Code Generation
+
+```javascript
+const code = await aiHandlers.nexusOpenAIChat({
+  prompt: "Write a TypeScript function that sorts an array of numbers",
+  model: "gpt-4",
+  temperature: 0.2
+});
+```
+
+### Text Summarization
+
+```javascript
+const summary = await aiHandlers.nexusAnthropicChat({
+  prompt: "Summarize the following text in 3 bullet points: [long text]",
+  model: "claude-3-sonnet-20240229",
+  maxTokens: 200
+});
+```
+
+### Translation
+
+```javascript
+const translation = await aiHandlers.nexusGeminiChat({
+  prompt: "Translate 'Hello, world!' to Spanish",
+  model: "gemini-pro"
+});
+```
+
+### Code Review
+
+```javascript
+const review = await aiHandlers.nexusOpenAIChat({
+  prompt: "Review this code for bugs and improvements:\n[code]",
+  model: "gpt-4",
+  temperature: 0.3
+});
+```
+
+## Troubleshooting
+
+### "API key not configured" Error
+- Ensure the environment variable is set
+- Check that the API key is valid
+- Verify the API key has the necessary permissions
+
+### "Model not found" Error
+- Check the model name spelling
+- Verify the model is available in your region
+- Some models may require special access
+
+### Rate Limiting
+- Implement exponential backoff
+- Use a queue for multiple requests
+- Consider upgrading your API plan
+
+### Ollama Connection Issues
+- Ensure Ollama is running: `ollama serve`
+- Check the OLLAMA_HOST configuration
+- Verify the model is downloaded: `ollama list`
+
+## Performance Tips
+
+1. **Batch Requests**: Process multiple prompts in parallel when possible
+2. **Caching**: Cache responses for repeated prompts
+3. **Model Selection**: Use smaller models for simple tasks
+4. **Streaming**: Use streaming for long responses to improve perceived latency
+5. **Connection Pooling**: Reuse client instances for multiple requests
+
+## Cost Considerations
+
+- **OpenAI**: Charged per 1K tokens (input and output)
+- **Gemini**: Free tier available, then charged per request
+- **Anthropic**: Charged per 1K tokens (input and output)
+- **Ollama**: Free (runs locally, uses your hardware)
+
+Always monitor token usage and set appropriate limits to control costs.
+
+## Support
+
+For issues or questions:
+- Check the [main documentation](./README.md)
+- Review the [API reference](./api-reference.md)
+- Open an issue on GitHub
