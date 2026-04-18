@@ -292,6 +292,13 @@ export interface DevelopmentConfig {
 }
 
 /**
+ * Utilities tool configuration
+ */
+export interface UtilitiesConfig {
+  enabled: boolean;
+}
+
+/**
  * Tools configuration (all tool configs)
  */
 export interface ToolsConfig {
@@ -301,6 +308,7 @@ export interface ToolsConfig {
   database: DatabaseConfig;
   system: SystemConfig;
   ai: AIConfig;
+  utilities: UtilitiesConfig;
 }
 
 /**

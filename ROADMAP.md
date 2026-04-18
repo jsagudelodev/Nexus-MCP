@@ -1134,13 +1134,13 @@ Mejoras avanzadas para escalabilidad y características enterprise.
 | 5 | Database Tools | ⏸️ OPTIONAL | 0% (requiere dependencias DB) |
 | 6 | System Tools | ✅ COMPLETED | 100% (3/4 sub-fases, 6.4 opcional) |
 | 7 | AI Tools | ✅ COMPLETED | 100% (8 herramientas básicas: Ollama + Gemini + OpenAI + Anthropic) |
-| 8 | Utilities Tools | ✅ COMPLETED | 100% (herramientas implementadas, pendiente config) |
+| 8 | Utilities Tools | ✅ COMPLETED | 100% (8 herramientas implementadas y registradas) |
 | 9 | Testing Suite | ✅ COMPLETED | 100% (49 tests implementados) |
 | 10 | Documentación | ✅ COMPLETED | 90% (documentación completa + AI Guide + MCP Guide + CLI mejorado) |
 | 11 | Deployment | ⏳ PENDING | 0% |
 | 12 | Mejoras Futuras | ⏳ PENDING | 0% |
 
-**Progreso General**: 36% (Fase 1, 2, 3, 4, 6, 7, 8, 9 y 10 completadas - 15,000+ líneas de código TypeScript production-ready, 65 herramientas implementadas - 57 registradas y funcionales, 8 utilities pendientes config, 49 tests implementados, documentación 90% completa con AI Guide + MCP Configuration Guide, CLI interactivo mejorado con colores y métricas, proyecto EJECUTABLE y listo para uso)
+**Progreso General**: 36% (Fase 1, 2, 3, 4, 6, 7, 8, 9 y 10 completadas — 15,000+ líneas de código TypeScript production-ready, **72 herramientas registradas y funcionales**, 49 tests implementados, documentación 95% completa, CLI interactiva con modo multi-turn y 9 comandos slash, proyecto EJECUTABLE y listo para uso)
 
 ---
 
@@ -1195,6 +1195,43 @@ Mejoras avanzadas para escalabilidad y características enterprise.
 
 ---
 
+## 🛠️ **Mejoras Recientes (Abril 2026 — Sesión de Debug y UX)**
+
+### **Bug Fixes**
+- ✅ **Ollama client**: Corregida instanciación incorrecta (`new Ollama({ host })` en lugar de llamada directa)
+- ✅ **TS2339**: Eliminada propiedad `response.context` inexistente en `ChatResponse` de Ollama
+- ✅ **OpenAI max_completion_tokens**: Reemplazado `max_tokens` por `max_completion_tokens` en ambos paths (streaming y non-streaming) para compatibilidad con modelos nuevos (`gpt-5.4-mini`, `gpt-5.4`, etc.)
+
+### **Integración Utilities Tools**
+- ✅ **`UtilitiesConfig`** añadido a `src/types.ts` y `ToolsConfig`
+- ✅ **`UtilitiesConfigSchema`** añadido a `src/config.ts` con defaults
+- ✅ **`utilitiesTools`** registrado en `src/index.ts` condicional a `config.tools.utilities.enabled`
+- ✅ **Total tools**: 72 herramientas funcionales (antes 57 registradas — las 8 de Utilities ya estaban implementadas pero no registradas)
+- ✅ **`.env.example`**: Actualizado con variables de Ollama, Gemini y Utilities
+
+### **CLI Interactiva — Reescritura Completa (ai-interactive-cli.js)**
+- ✅ **Módulo**: Convertido de ESM (`import`) a CommonJS (`require`) para compatibilidad con dist/
+- ✅ **Winston silenciado**: Logger de handlers redirigido a transport silencioso para no contaminar stdout
+- ✅ **Modo chat continuo**: Sesión persistente con el mismo modelo hasta `/menu` o `/exit` (antes: una pregunta → volver al menú)
+- ✅ **Prompts correctos**: `rl.question` con texto visible (antes: `process.stdout.write` + `rl.question('')` generaba cursor invisible)
+- ✅ **Multi-turn context**: `sessionMessages[]` por sesión; hasta 6 turnos (12 mensajes) como contexto activo; indicador `[ctx:N turns]` en el prompt
+- ✅ **Comando `/tools`**: Lista los 72 tools con descripción y separadores por categoría; soporta filtro (`/tools git`, `/tools file`)
+- ✅ **Comando `/reset`**: Limpia el contexto de conversación sin salir de la sesión
+- ✅ **Comando `/tokens`**: Muestra tokens de sesión, total acumulado y turnos de contexto activo
+- ✅ **Historial persistente**: `examples/.chat-history.json` — se carga al inicio, `/history` muestra últimos 6 mensajes
+- ✅ **UI renovada**: Banner, separadores con etiqueta, colores por proveedor, formato inline `Tú › ...` / `AI › ...`
+
+### **Documentación**
+- ✅ **`docs/ai-tools-guide.md`**: Sección Interactive CLI completamente reescrita con flujo en 3 pasos, nueva UI, tabla de 9 comandos, ejemplo de `/tools git` e historial persistente
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo conversación multi-turn con comandos de slash
+- **Build**: ✅ Exitoso
+- **Documentación**: 95% completa
+
+---
+
 ## 🏛️ **Principios Arquitectónicos**
 
 Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad production-grade. Ver [docs/architectural-principles.md](./docs/architectural-principles.md) para detalles completos:
@@ -1222,6 +1259,6 @@ Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad 
 
 ---
 
-**Última Actualización**: 2026-04-15
+**Última Actualización**: 2026-04-18
 **Versión**: 1.0.0-alpha
 **Autor**: Nexus Team
