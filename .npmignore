@@ -1,0 +1,44 @@
+# Source files
+src/
+tests/
+examples/
+docs/
+*.ts
+!*.d.ts
+
+# Development files
+.git/
+.gitignore
+.npmignore
+.eslintrc.js
+.prettierrc
+.husky/
+lint-staged.config.js
+
+# Build artifacts (already excluded by package.json files)
+coverage/
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (already included in package.json files)
+ROADMAP.md
+CHANGELOG.md
+
+# Config files (already included in package.json files)
+config/*.example.yaml
+!config/

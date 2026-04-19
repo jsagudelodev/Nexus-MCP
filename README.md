@@ -1,4 +1,4 @@
-# Nexus-MCP
+# Nexus AI Tools
 
 <div align="center">
 
@@ -34,7 +34,7 @@ Nexus-MCP is a powerful **Model Context Protocol (MCP) server** built with TypeS
 ### Installation
 
 ```bash
-npm install -g @nexus-mcp/server
+npm install -g nexus-ai-tools
 ```
 
 ### Configuration

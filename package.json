@@ -1,11 +1,11 @@
 {
-  "name": "@nexus-mcp/server",
-  "version": "1.0.0-alpha",
-  "description": "Nexus MCP - A comprehensive Model Context Protocol toolkit for AI assistants",
+  "name": "nexus-ai-tools",
+  "version": "1.0.0",
+  "description": "MCP server with 65 tools for AI assistants - Filesystem, HTTP, Git, System, AI, and Utilities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "nexus-mcp": "./dist/cli.js"
+    "nexus-ai-tools": "./dist/cli.js"
   },
   "scripts": {
     "dev": "ts-node src/index.ts",
@@ -26,32 +26,39 @@
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run build && npm test",
     "prepare": "husky install"
   },
   "keywords": [
     "mcp",
-    "model-context-protocol",
-    "ai",
     "claude",
-    "anthropic",
+    "ai",
+    "tools",
     "automation",
+    "llm",
+    "ollama",
+    "gemini",
+    "openai",
+    "anthropic",
+    "model-context-protocol",
     "filesystem",
     "http",
     "git",
-    "database",
-    "tools"
+    "system",
+    "utilities",
+    "assistant",
+    "chatbot"
   ],
-  "author": "Nexus Team",
+  "author": "jsagudelodev",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/Nexus-MCP.git"
+    "url": "https://github.com/jsagudelodev/nexus-ai-tools.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/Nexus-MCP/issues"
+    "url": "https://github.com/jsagudelodev/nexus-ai-tools/issues"
   },
-  "homepage": "https://github.com/your-org/Nexus-MCP#readme",
+  "homepage": "https://github.com/jsagudelodev/nexus-ai-tools#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.16.0",
     "@google/generative-ai": "^0.1.3",
