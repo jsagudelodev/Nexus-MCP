@@ -6,6 +6,15 @@
       "command": "node",
       "args": ["/path/to/filesystem-server.js"],
       "env": {}
+    },
+    {
+      "name": "google-news",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["node_modules/@chanmeng666/google-news-server/dist/index.js"],
+      "env": {
+        "SERP_API_KEY": "your-serp-api-key-here"
+      }
     }
   ],
   "defaultTimeout": 30000,

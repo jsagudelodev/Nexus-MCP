@@ -61,6 +61,7 @@
   "homepage": "https://github.com/jsagudelodev/nexus-ai-tools#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.16.0",
+    "@chanmeng666/google-news-server": "^1.0.0",
     "@google/generative-ai": "^0.1.3",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "adm-zip": "^0.5.12",
