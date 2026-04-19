@@ -1,0 +1,14 @@
+{
+  "servers": [
+    {
+      "name": "test-server-1",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "/path/to/server.js"
+      ]
+    }
+  ],
+  "defaultTimeout": 30000,
+  "enableDiscovery": true
+}

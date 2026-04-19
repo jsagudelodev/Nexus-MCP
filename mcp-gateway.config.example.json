@@ -1,0 +1,13 @@
+{
+  "servers": [
+    {
+      "name": "example-filesystem-server",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["/path/to/filesystem-server.js"],
+      "env": {}
+    }
+  ],
+  "defaultTimeout": 30000,
+  "enableDiscovery": true
+}

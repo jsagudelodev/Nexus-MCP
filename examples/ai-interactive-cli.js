@@ -22,6 +22,12 @@ const { systemTools }      = require('../dist/tools/system/index.js');
 const { aiTools }          = require('../dist/tools/ai/index.js');
 const { utilitiesTools }   = require('../dist/tools/utilities/index.js');
 
+// MCP Gateway imports
+const { MCPGatewayConfigManager } = require('../dist/mcp-gateway/config.js');
+const { MCPGatewayRegistry } = require('../dist/mcp-gateway/registry.js');
+const { MCPGatewayDiscovery } = require('../dist/mcp-gateway/discovery.js');
+const { MCPGatewayRouter } = require('../dist/mcp-gateway/router.js');
+
 // ── Agent tool registry (tools disponibles para function calling) ────────────
 const AGENT_EXCLUDED = new Set(['nexus_execute_command', 'nexus_list_processes']);
 const AGENT_TOOL_LIST = [
@@ -29,6 +35,21 @@ const AGENT_TOOL_LIST = [
   ...systemTools.filter(t => !AGENT_EXCLUDED.has(t.name)),
 ];
 const agentToolIndex = Object.fromEntries(AGENT_TOOL_LIST.map(t => [t.name, t]));
+
+// ── MCP Gateway Initialization ─────────────────────────────────────────────────
+let mcpConfigManager, mcpRegistry, mcpDiscovery, mcpRouter;
+let mcpGatewayEnabled = false;
+
+try {
+  mcpConfigManager = new MCPGatewayConfigManager();
+  mcpRegistry = new MCPGatewayRegistry({ debug: false });
+  mcpDiscovery = new MCPGatewayDiscovery({ autoRefresh: false });
+  mcpRouter = new MCPGatewayRouter(mcpRegistry);
+  mcpGatewayEnabled = true;
+} catch (error) {
+  console.log(`  ${c.dim}○ MCP Gateway no disponible: ${error.message}${c.reset}`);
+  mcpGatewayEnabled = false;
+}
 
 function toOpenAIParams(zodSchema) {
   try {
@@ -498,6 +519,13 @@ function showHelp(agentMode, providerKey) {
   console.log(`  ${c.cyan}/tools${c.reset}     Listar todos los tools disponibles`);
   console.log(`  ${c.cyan}/manual${c.reset}   Ejecutar un tool manualmente: /manual <tool> [args_json]`);
   console.log(`  ${c.cyan}/danger-confirm${c.reset} Toggle confirmación de tools peligrosos`);
+  if (mcpGatewayEnabled) {
+    console.log(`  ${c.cyan}/mcp-servers${c.reset}  Listar servidores MCP externos`);
+    console.log(`  ${c.cyan}/mcp-add${c.reset}     Agregar servidor: /mcp-add <name> <transport> [command]`);
+    console.log(`  ${c.cyan}/mcp-remove${c.reset}  Remover servidor: /mcp-remove <name>`);
+    console.log(`  ${c.cyan}/mcp-refresh${c.reset} Refrescar tools: /mcp-refresh <name>`);
+    console.log(`  ${c.cyan}/mcp-tools${c.reset}   Listar tools de servidores externos`);
+  }
   console.log(`  ${c.cyan}/reset${c.reset}     Limpiar el contexto de la conversación`);
   console.log(`  ${c.cyan}/clear${c.reset}     Limpiar pantalla`);
   console.log(`  ${c.cyan}/history${c.reset}   Ver últimos 6 mensajes`);
@@ -505,9 +533,6 @@ function showHelp(agentMode, providerKey) {
   console.log(`  ${c.cyan}/help${c.reset}      Mostrar esta ayuda`);
   console.log(`  ${c.cyan}/exit${c.reset}      Salir`);
   if (agentMode) {
-    console.log(`  ${c.cyan}/agent-stats${c.reset}  Estadísticas de uso de tools`);
-    console.log(`  ${c.cyan}/agent-history${c.reset} Historial de tools ejecutados`);
-    console.log(`  ${c.cyan}/agent-verbose${c.reset} Toggle modo detallado (JSON completo)`);
     console.log(`\n${c.dim}  Modo agente: Tools mostrados con colores por categoría, tiempo de ejecución y estado${c.reset}\n`);
   } else {
     console.log();
@@ -744,6 +769,115 @@ async function chatSession(providerKey, model) {
         console.log(`  ${c.dim}Tools peligrosos (${DANGEROUS_TOOLS.length}): ${DANGEROUS_TOOLS.join(', ')}${c.reset}`);
       }
       console.log();
+      continue;
+    }
+
+    // ── MCP Gateway Commands ─────────────────────────────────────────────────────
+    if (input === '/mcp-servers') {
+      if (!mcpGatewayEnabled) {
+        console.log(`\n  ${c.yellow}⚠ MCP Gateway no está disponible${c.reset}\n`);
+      } else {
+        const connections = mcpRegistry.getAllConnections();
+        const stats = mcpRegistry.getStats();
+        console.log(`\n  ${c.bright}Servidores MCP Registrados:${c.reset}`);
+        console.log(`  ${c.dim}Total: ${stats.totalServers} | Conectados: ${stats.connectedServers} | Tools: ${stats.totalTools}${c.reset}\n`);
+        if (connections.length === 0) {
+          console.log(`  ${c.dim}○ No hay servidores registrados${c.reset}`);
+        } else {
+          connections.forEach(conn => {
+            const status = conn.connected ? c.green + '✓ Conectado' : c.red + '✗ Desconectado';
+            console.log(`  ${c.cyan}${conn.config.name}${c.reset}  ${status}${c.reset}  ${conn.tools.size} tools`);
+            if (conn.lastConnected) {
+              console.log(`  ${c.dim}  Última conexión: ${conn.lastConnected.toLocaleString()}${c.reset}`);
+            }
+          });
+        }
+        console.log();
+      }
+      continue;
+    }
+
+    if (input.startsWith('/mcp-add')) {
+      if (!mcpGatewayEnabled) {
+        console.log(`\n  ${c.yellow}⚠ MCP Gateway no está disponible${c.reset}\n`);
+      } else {
+        const args = input.slice(9).trim().split(/\s+/);
+        if (args.length < 2) {
+          console.log(`\n  ${c.dim}Uso: /mcp-add <name> <transport> [command] [args...]${c.reset}\n`);
+          console.log(`  ${c.dim}Ejemplo: /mcp-add filesystem stdio node /path/to/server.js${c.reset}\n`);
+        } else {
+          const [name, transport, command, ...cmdArgs] = args;
+          try {
+            const config = { name, transport, command, args: cmdArgs };
+            await mcpRegistry.registerServer(config);
+            console.log(`\n  ${c.green}✓ Servidor '${name}' registrado exitosamente${c.reset}\n`);
+          } catch (error) {
+            console.log(`\n  ${c.red}✗ Error al registrar servidor: ${error.message}${c.reset}\n`);
+          }
+        }
+      }
+      continue;
+    }
+
+    if (input.startsWith('/mcp-remove')) {
+      if (!mcpGatewayEnabled) {
+        console.log(`\n  ${c.yellow}⚠ MCP Gateway no está disponible${c.reset}\n`);
+      } else {
+        const name = input.slice(12).trim();
+        if (!name) {
+          console.log(`\n  ${c.dim}Uso: /mcp-remove <name>${c.reset}\n`);
+        } else {
+          try {
+            await mcpRegistry.unregisterServer(name);
+            console.log(`\n  ${c.green}✓ Servidor '${name}' removido exitosamente${c.reset}\n`);
+          } catch (error) {
+            console.log(`\n  ${c.red}✗ Error al remover servidor: ${error.message}${c.reset}\n`);
+          }
+        }
+      }
+      continue;
+    }
+
+    if (input.startsWith('/mcp-refresh')) {
+      if (!mcpGatewayEnabled) {
+        console.log(`\n  ${c.yellow}⚠ MCP Gateway no está disponible${c.reset}\n`);
+      } else {
+        const name = input.slice(13).trim();
+        if (!name) {
+          console.log(`\n  ${c.dim}Uso: /mcp-refresh <name>${c.reset}\n`);
+        } else {
+          try {
+            const config = mcpConfigManager.getServer(name);
+            if (!config) {
+              console.log(`\n  ${c.red}✗ Servidor '${name}' no encontrado en configuración${c.reset}\n`);
+            } else {
+              await mcpRegistry.refreshTools(name);
+              console.log(`\n  ${c.green}✓ Tools de servidor '${name}' refrescados exitosamente${c.reset}\n`);
+            }
+          } catch (error) {
+            console.log(`\n  ${c.red}✗ Error al refrescar tools: ${error.message}${c.reset}\n`);
+          }
+        }
+      }
+      continue;
+    }
+
+    if (input === '/mcp-tools') {
+      if (!mcpGatewayEnabled) {
+        console.log(`\n  ${c.yellow}⚠ MCP Gateway no está disponible${c.reset}\n`);
+      } else {
+        const routes = mcpRouter.listToolRoutes();
+        console.log(`\n  ${c.bright}Tools de Servidores Externos:${c.reset}`);
+        console.log(`  ${c.dim}Total: ${routes.length} tools${c.reset}\n`);
+        if (routes.length === 0) {
+          console.log(`  ${c.dim}○ No hay tools disponibles${c.reset}`);
+        } else {
+          routes.forEach(r => {
+            console.log(`  ${c.cyan}${r.qualifiedName}${c.reset}  ${c.dim}→ ${r.server}${c.reset}`);
+          });
+        }
+        console.log();
+      }
       continue;
     }
 

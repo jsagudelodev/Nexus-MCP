@@ -1,0 +1,46 @@
+{
+  "servers": [
+    {
+      "name": "test-server-1",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "/path/to/server.js"
+      ]
+    },
+    {
+      "name": "test-server-2",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "/path/to/server.js"
+      ]
+    },
+    {
+      "name": "test-server-4",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "/path/to/server.js"
+      ]
+    },
+    {
+      "name": "test-server-5",
+      "transport": "stdio",
+      "command": "python",
+      "args": [
+        "/path/to/server.js"
+      ]
+    },
+    {
+      "name": "test-server-6",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "/path/to/server.js"
+      ]
+    }
+  ],
+  "defaultTimeout": 30000,
+  "enableDiscovery": true
+}

@@ -1517,6 +1517,263 @@ Cuando la IA intenta ejecutar tools peligrosos:
 
 ---
 
+## 🌉 **MCP Gateway - Fase 1: Cliente MCP Básico (Abril 2026 — Sesión de Arquitectura)**
+
+### **Objetivo**
+Implementar un MCP Gateway que permita a Nexus-MCP conectarse a servidores MCP externos, actuando como orquestador central de múltiples servidores MCP.
+
+### **Fase 1: Cliente MCP Básico** ✅ COMPLETADA
+
+#### **Componentes Implementados**
+
+**1. Types (`src/mcp-gateway/types.ts`)**
+- `TransportType` - Tipos de transporte (stdio, SSE)
+- `MCPServerConfig` - Configuración de servidor externo
+- `MCPTool` - Definición de tool MCP
+- `MCPCallToolResult` - Resultado de tool call
+- `MCPServerConnection` - Estado de conexión
+- `MCPClientOptions` - Opciones del cliente
+
+**2. Cliente MCP (`src/mcp-gateway/client.ts`)**
+- `MCPClient` class - Cliente para conectar a servidores MCP
+- `connect()` - Conectar via stdio o SSE
+- `disconnect()` - Desconectar del servidor
+- `listTools()` - Listar tools disponibles
+- `callTool()` - Ejecutar un tool
+- `sendRequest()` - Enviar JSON-RPC requests
+- `isConnected()` - Verificar estado de conexión
+- Soporte para timeout y retry
+- Logging estructurado
+
+**3. Configuración (`src/mcp-gateway/config.ts`)**
+- `MCPGatewayConfig` - Configuración del gateway
+- `MCPGatewayConfigManager` - Gestor de configuración
+- `loadConfig()` - Cargar desde archivo JSON
+- `saveConfig()` - Guardar a archivo JSON
+- `addServer()` - Agregar servidor externo
+- `removeServer()` - Remover servidor externo
+- `updateServer()` - Actualizar configuración
+- `getServer()` - Obtener configuración de servidor
+- Archivo de ejemplo: `mcp-gateway.config.example.json`
+
+#### **Características**
+- ✅ Soporte para transporte stdio (spawn de procesos)
+- ✅ Placeholder para transporte SSE (Server-Sent Events)
+- ✅ JSON-RPC 2.0 protocol
+- ✅ Timeout configurable (30ms default)
+- ✅ Error handling robusto
+- ✅ Logging estructurado
+- ✅ Configuración persistente en JSON
+- ✅ TypeScript estricto con tipos
+
+#### **Limitaciones Actuales**
+- ⏳ SSE transport no implementado (placeholder)
+- ⏳ No hay routing de tool calls
+- ⏳ No hay integración con el MCP server principal
+- ⏳ No hay comandos CLI para gestión
+
+### **Fase 2: Registro y Descubrimiento** ✅ COMPLETADA
+
+#### **Componentes Implementados**
+
+**1. Registry (`src/mcp-gateway/registry.ts`)**
+- `MCPGatewayRegistry` class - Gestor de servidores registrados
+- `registerServer()` - Registrar nuevo servidor con descubrimiento automático de tools
+- `unregisterServer()` - Desregistrar servidor y desconectar
+- `getConnection()` - Obtener conexión de un servidor
+- `getAllConnections()` - Obtener todas las conexiones
+- `refreshTools()` - Refrescar tools de un servidor
+- `getAllTools()` - Obtener todos los tools de todos los servidores (con nombres calificados)
+- `findToolServer()` - Encontrar qué servidor tiene un tool específico
+- `detectCollisions()` - Detectar colisiones de nombres de tools
+- `getStats()` - Estadísticas del registry
+- `disconnectAll()` - Desconectar todos los servidores
+
+**2. Discovery (`src/mcp-gateway/discovery.ts`)**
+- `MCPGatewayDiscovery` class - Sistema de descubrimiento y caché de tools
+- `discoverTools()` - Descubrir tools de un servidor y cachearlos
+- `getServerTools()` - Obtener tools cacheados de un servidor
+- `getAllTools()` - Obtener todos los tools cacheados
+- `refreshTools()` - Refrescar tools de un servidor
+- `refreshAll()` - Refrescar todos los tools
+- `clearServerCache()` - Limpiar caché de un servidor
+- `clearAllCache()` - Limpiar toda la caché
+- `getCacheStats()` - Estadísticas de la caché
+- `startAutoRefresh()` - Iniciar auto-refresh (configurable)
+- `stopAutoRefresh()` - Detener auto-refresh
+- `destroy()` - Cleanup de recursos
+
+#### **Características**
+- ✅ Registro dinámico de servidores MCP
+- ✅ Descubrimiento automático de tools al registrar servidor
+- ✅ Caché de tool definitions con TTL configurable (5 min default)
+- ✅ Auto-refresh de caché (10 min default, configurable)
+- ✅ Detección de colisiones de nombres de tools
+- ✅ Nombres calificados de tools (server:tool_name)
+- ✅ Estadísticas del registry y caché
+- ✅ Graceful disconnect de todos los servidores
+- ✅ Logging estructurado
+
+#### **Limitaciones Actuales**
+- ⏳ SSE transport no implementado (placeholder)
+- ⏳ No hay integración con el MCP server principal
+- ⏳ No hay comandos CLI para gestión
+
+### **Fase 3: Routing** ✅ COMPLETADA
+
+#### **Componentes Implementados**
+
+**1. Router (`src/mcp-gateway/router.ts`)**
+- `MCPGatewayRouter` class - Router de tool calls
+- `routeToolCall()` - Rutea un tool call al servidor apropiado
+- `routeToolCalls()` - Rutea múltiples tool calls en paralelo
+- `callServerTool()` - Ejecuta un tool en un servidor específico
+- `getRoutingStats()` - Estadísticas de routing
+- `listToolRoutes()` - Lista todos los tools con sus rutas
+- `canRouteTool()` - Valida si un tool puede ser ruteado
+- `getToolServer()` - Obtiene el servidor que manejaría un tool
+
+#### **Características**
+- ✅ Soporte para nombres calificados de tools (server:tool_name)
+- ✅ Detección automática del servidor para tools no calificados
+- ✅ Ejecución paralela de múltiples tool calls
+- ✅ Timeout y retry configurables
+- ✅ Validación de routing antes de ejecución
+- ✅ Error handling robusto con logging
+- ✅ Estadísticas de routing (servidores, tools, rutas)
+- ✅ Listado de todas las rutas disponibles
+
+#### **Funcionamiento**
+1. **Nombres Calificados**: Si el tool name incluye ":" (ej: "filesystem:read"), el router extrae el servidor y el tool name
+2. **Nombres No Calificados**: Si el tool name no incluye ":", el router busca qué servidor tiene ese tool
+3. **Ejecución**: Conecta al servidor, ejecuta el tool, desconecta
+4. **Paralelismo**: Soporta ejecución de múltiples tools en paralelo usando Promise.all
+5. **Error Handling**: Retorna resultados con indicadores de éxito/error y duración
+
+#### **Limitaciones Actuales**
+- ⏳ SSE transport no implementado (placeholder)
+- ⏳ No hay integración con el MCP server principal (tools externos no se agregan al modo agente)
+- ⏳ No hay soporte para tools externos en el modo agente
+
+### **Fase 4: CLI y Configuración** ✅ COMPLETADA
+
+#### **Componentes Implementados**
+
+**1. CLI Commands (`examples/ai-interactive-cli.js`)**
+- `/mcp-servers` - Listar servidores MCP externos registrados
+- `/mcp-add <name> <transport> [command]` - Agregar un servidor externo
+- `/mcp-remove <name>` - Remover un servidor externo
+- `/mcp-refresh <name>` - Refrescar tools de un servidor
+- `/mcp-tools` - Listar todos los tools de servidores externos
+
+#### **Características**
+- ✅ Integración completa del MCP Gateway con la CLI interactiva
+- ✅ Inicialización automática del gateway al inicio
+- ✅ Manejo de errores cuando el gateway no está disponible
+- ✅ Visualización de estado de servidores (conectado/desconectado)
+- ✅ Estadísticas de servidores (total, conectados, tools)
+- ✅ Listado de tools con nombres calificados (server:tool_name)
+- ✅ Actualización dinámica de help con comandos MCP Gateway
+- ✅ Logging estructurado de operaciones
+
+#### **Comandos Disponibles**
+```
+/mcp-servers          Listar servidores MCP externos
+/mcp-add <name> <transport> [command]  Agregar servidor
+/mcp-remove <name>    Remover servidor
+/mcp-refresh <name>  Refrescar tools de servidor
+/mcp-tools            Listar tools de servidores externos
+```
+
+#### **Ejemplos de Uso**
+```
+/mcp-servers
+  Servidores MCP Registrados:
+  Total: 2 | Conectados: 1 | Tools: 15
+
+  filesystem  ✓ Conectado  8 tools
+    Última conexión: 4/19/2026, 3:45:00 PM
+
+  database    ✗ Desconectado  7 tools
+
+/mcp-add my-server stdio node /path/to/server.js
+  ✓ Servidor 'my-server' registrado exitosamente
+
+/mcp-tools
+  Tools de Servidores Externos:
+  Total: 15 tools
+
+  filesystem:read  → filesystem
+  filesystem:write → filesystem
+  database:query   → database
+```
+
+#### **Limitaciones Actuales**
+- ⏳ SSE transport no implementado (placeholder)
+- ⏳ No hay integración con el MCP server principal (tools externos no se agregan al modo agente)
+- ⏳ No hay soporte para tools externos en el modo agente
+
+### **Tests del MCP Gateway** ✅ COMPLETADOS
+
+#### **Test Suites Implementados**
+
+**1. Config Tests (`tests/mcp-gateway/config.test.ts`)**
+- Tests de carga de configuración por defecto
+- Tests de agregar servidor
+- Tests de error al agregar servidor duplicado
+- Tests de remover servidor
+- Tests de error al remover servidor no existente
+- Tests de obtener servidor específico
+- Tests de obtener servidor no existente
+- Tests de actualizar servidor
+- Tests de guardar y cargar configuración
+
+**2. Registry Tests (`tests/mcp-gateway/registry.test.ts`)**
+- Tests de registro de servidor (estructura, sin conexión real)
+- Tests de verificación de servidor registrado
+- Tests de obtención de conexiones vacías
+- Tests de estadísticas de registry vacío
+- Tests de detección de colisiones en registry vacío
+- Tests de desconexión de todos los servidores
+
+**3. Discovery Tests (`tests/mcp-gateway/discovery.test.ts`)**
+- Tests de inicialización con opciones por defecto
+- Tests de obtención de tools vacíos
+- Tests de obtención de caché de tools vacío
+- Tests de estadísticas de caché vacío
+- Tests de limpieza de caché de servidor
+- Tests de limpieza de toda la caché
+- Tests de detención de auto-refresh
+- Tests de cleanup de recursos
+
+**4. Router Tests (`tests/mcp-gateway/router.test.ts`)**
+- Tests de inicialización de router con registry
+- Tests de error para tool no existente
+- Tests de error para tool calificado no existente
+- Tests de manejo de array vacío de tool calls
+- Tests de estadísticas de routing para registry vacío
+- Tests de listado de rutas vacío
+- Tests de validación de routing para tool no existente
+- Tests de validación de routing para tool calificado no existente
+- Tests de obtención de servidor para tool no existente
+- Tests de obtención de servidor para tool calificado
+
+#### **Resultados de Tests**
+- **Test Suites**: 4/4 pasaron ✅
+- **Tests Totales**: 33/33 pasaron ✅
+- **Coverage**: Config, Registry, Discovery, Router
+- **Configuración de Logger**: Winston silenciado durante tests
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo agente con 3 proveedores (OpenAI, Ollama, Gemini) + modo híbrido + confirmación + mejoras visuales + tracking completo + MCP Gateway CLI
+- **MCP Gateway**: Fase 4 completada (CLI y Configuración) + Tests completados
+- **Comandos totales**: 20 comandos (12 generales + 3 específicos del agente + 5 MCP Gateway)
+- **Build**: ✅ Exitoso
+- **Documentación**: 98% completa
+
+---
+
 ## �️ **Principios Arquitectónicos**
 
 Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad production-grade. Ver [docs/architectural-principles.md](./docs/architectural-principles.md) para detalles completos:
@@ -1544,6 +1801,6 @@ Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad 
 
 ---
 
-**Última Actualización**: 2026-04-19 (Sesión UX — Function Calling para Ollama y Gemini)
+**Última Actualización**: 2026-04-19 (Sesión de Arquitectura — MCP Gateway Fase 4)
 **Versión**: 1.0.0-alpha
 **Autor**: Nexus Team
