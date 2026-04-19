@@ -10,7 +10,7 @@
  */
 
 import { z } from 'zod';
-import ollama from 'ollama';
+import { Ollama } from 'ollama';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
@@ -23,13 +23,12 @@ import { ToolCategory } from '../../types.js';
 // Ollama Client
 // ============================================================================
 
-let ollamaClient: any = null;
+let ollamaClient: Ollama | null = null;
 
-function getOllamaClient(): any {
+function getOllamaClient(): Ollama {
   if (!ollamaClient) {
     const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
-    // @ts-ignore - ollama library may not have perfect TypeScript types
-    ollamaClient = new ollama({ host: ollamaHost });
+    ollamaClient = new Ollama({ host: ollamaHost });
   }
   return ollamaClient;
 }
@@ -187,8 +186,7 @@ async function nexusOllamaChat(args: unknown): Promise<ToolResult> {
           model: parsed.model,
           provider: 'ollama',
           streamed: false,
-          done: response.done,
-          context: response.context
+          done: response.done
         }
       };
     }
@@ -335,7 +333,7 @@ async function nexusOpenAIChat(args: unknown): Promise<ToolResult> {
         model: parsed.model,
         messages: [{ role: 'user', content: parsed.prompt }],
         temperature: parsed.temperature,
-        max_tokens: parsed.maxTokens,
+        max_completion_tokens: parsed.maxTokens,
         stream: true
       });
 
@@ -360,7 +358,7 @@ async function nexusOpenAIChat(args: unknown): Promise<ToolResult> {
         model: parsed.model,
         messages: [{ role: 'user', content: parsed.prompt }],
         temperature: parsed.temperature,
-        max_tokens: parsed.maxTokens,
+        max_completion_tokens: parsed.maxTokens,
         stream: false
       });
 

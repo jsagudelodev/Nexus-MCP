@@ -213,13 +213,18 @@ const DevelopmentConfigSchema = z.object({
   mock_external_services: z.boolean().default(false)
 });
 
+const UtilitiesConfigSchema = z.object({
+  enabled: z.boolean().default(true)
+});
+
 const ToolsConfigSchema = z.object({
   filesystem: FilesystemConfigSchema,
   http: HttpConfigSchema,
   git: GitConfigSchema,
   database: DatabaseConfigSchema,
   system: SystemConfigSchema,
-  ai: AIConfigSchema
+  ai: AIConfigSchema,
+  utilities: UtilitiesConfigSchema
 });
 
 const NexusConfigSchema = z.object({
@@ -368,6 +373,9 @@ const defaultConfig: NexusConfig = {
         type: 'local',
         path: './data/vectors'
       }
+    },
+    utilities: {
+      enabled: true
     }
   },
   security: {

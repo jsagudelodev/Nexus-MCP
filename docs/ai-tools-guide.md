@@ -150,25 +150,218 @@ const result = await aiHandlers.nexusAnthropicListModels({});
 console.log(result.data.models);
 ```
 
+## Interactive CLI
+
+Nexus-MCP incluye una CLI interactiva para probar todos los proveedores de IA sin escribir código, con soporte de conversación multi-turn, historial persistente y acceso a la lista de tools.
+
+### Uso
+
+```powershell
+# Asegúrate de tener el .env configurado con tus API keys
+node --env-file=.env examples/ai-interactive-cli.js
+```
+
+### Flujo de la CLI
+
+**1 — Selección de proveedor**
+
+```
+  ╔══════════════════════════════════════════════════════╗
+  ║          Nexus-MCP  ·  AI Interactive CLI           ║
+  ╚══════════════════════════════════════════════════════╝
+
+────────────── Proveedores de IA ──────────────
+
+  1  🦙  Ollama (Local LLMs)
+  2  🔮  Gemini (Google AI)
+  3  🤖  OpenAI (GPT)
+  4  🧠  Anthropic (Claude)
+  0  Salir
+
+› Elige proveedor: _
+```
+
+**2 — Selección de modelo**
+
+```
+  Obteniendo modelos de OpenAI (GPT)...
+
+──────── 🤖 OpenAI (GPT) ────────
+
+  1  gpt-4-0613
+  2  gpt-4
+  3  gpt-3.5-turbo
+  4  gpt-5.4-mini
+  ...
+
+  Enter = default: gpt-3.5-turbo
+
+› Elige modelo (1-10 o Enter): _
+```
+
+**3 — Sesión de chat con contexto multi-turn**
+
+```
+  🤖 OpenAI (GPT)  ·  gpt-3.5-turbo
+  Escribe /help para ver comandos
+──────────────────────────────────────────────
+
+Tú  › Mi nombre es Carlos
+AI   › ¡Hola Carlos! ¿En qué puedo ayudarte hoy?
+  ↳ 623ms  ·  18 tokens
+
+[ctx:1 turn] Tú  › ¿Cómo me llamo?
+AI   › Tu nombre es Carlos.
+  ↳ 401ms  ·  22 tokens
+
+[ctx:2 turns] Tú  › _
+```
+
+El indicador `[ctx:N turns]` muestra cuántos intercambios previos están activos como contexto (máximo 6 turnos).
+
+### Comandos disponibles
+
+| Comando | Descripción |
+|---|---|
+| `/menu` | Volver al menú de proveedores |
+| `/agent` | Activar/desactivar modo agente con tools (solo OpenAI) |
+| `/tools` | Listar los 72 tools disponibles con descripción |
+| `/tools <filtro>` | Filtrar tools por nombre o descripción (ej: `/tools git`, `/tools file`) |
+| `/reset` | Limpiar el contexto de la conversación sin salir de la sesión |
+| `/clear` | Limpiar la pantalla |
+| `/history` | Ver los últimos 6 mensajes del historial persistente |
+| `/tokens` | Ver tokens usados en la sesión, contexto activo y estado del agente |
+| `/help` | Mostrar la lista de comandos |
+| `/exit` | Salir de la CLI |
+
+### Ejemplo — `/tools` con filtro
+
+```
+[ctx:2 turns] Tú  › /tools git
+
+────────────── 🔀 Git (15) ──────────────
+
+  nexus_git_init       Initialize a new Git repository
+  nexus_git_clone      Clone a Git repository from URL
+  nexus_git_status     Get Git repository status
+  nexus_git_add        Add files to Git staging area
+  nexus_git_commit     Create a Git commit
+  nexus_git_log        Get Git commit history
+  ...
+
+  Total: 15 tools para "git"
+```
+
+### Modo Agente — OpenAI Function Calling
+
+Cuando usas OpenAI como proveedor, puedes activar el **modo agente** con `/agent`. En este modo la IA tiene acceso a los tools de Nexus-MCP y los invoca automáticamente cuando los necesita para responder.
+
+```
+  ✓ Modo agente ACTIVADO
+  La IA usará los 14 tools de Nexus-MCP cuando los necesite
+
+[🔧 agente] Tú  › dame información del sistema
+
+  🔧 nexus_system_info  {}
+     → {"cpu":{"model":"12th Gen Intel i7-1255U","count":12}...
+  🔧 nexus_system_memory_info  {}
+     → {"freeGB":"10.27","usedGB":"29.42",...
+
+AI   › El sistema tiene un i7-1255U con 12 núcleos y 10.27 GB de RAM libre.
+  ↳ 2341ms  ·  498 tokens
+
+[🔧 agente] Tú  › genera un UUID para esta sesión
+
+  🔧 nexus_uuid_generate  {}
+     → {"uuid":"9d7dc0bf-f432-44da-a1d1-d9776d86ed8f",...
+
+AI   › Aquí tienes tu UUID: `9d7dc0bf-f432-44da-a1d1-d9776d86ed8f`
+  ↳ 921ms  ·  201 tokens
+
+[🔧 agente] Tú  › /agent   ← toggle OFF
+  ○ Modo agente desactivado
+```
+
+#### Cómo funciona internamente (4 pasos)
+
+```
+[1] Tú envías una solicitud en lenguaje natural
+[2] GPT analiza y emite tool_calls con args validados por JSON schema
+[3] Nexus-MCP ejecuta los tools (en paralelo si son varios)
+[4] GPT recibe los resultados y redacta la respuesta final
+```
+
+**Tools disponibles en modo agente** (14 tools de utilities + system):
+- `nexus_uuid_generate`, `nexus_hash_generate`, `nexus_timestamp`, `nexus_url_parse`
+- `nexus_json_parse`, `nexus_json_stringify`, `nexus_base64_encode`, `nexus_base64_decode`
+- `nexus_system_info`, `nexus_system_memory_info`, `nexus_system_cpu_info`
+- `nexus_system_disk_info`, `nexus_system_network_info`, `nexus_system_os_info`
+
+> **Nota**: Solo disponible con OpenAI. GPT puede invocar múltiples tools en paralelo (parallel function calling) — el agente los ejecuta todos y devuelve todos los resultados antes de formular la respuesta.
+
+### Historial persistente
+
+Cada conversación se guarda automáticamente en `examples/.chat-history.json` con timestamps, proveedor y tokens acumulados. El archivo se carga al iniciar la CLI y `/history` muestra los últimos 6 mensajes.
+
+### Prueba rápida sin CLI (Node.js)
+
+Para verificar que los handlers funcionan directamente:
+
+```javascript
+// test-ai.js
+'use strict';
+const { aiHandlers } = require('./dist/tools/ai/index.js');
+
+async function test() {
+  // Listar modelos OpenAI
+  const models = await aiHandlers.nexusOpenAIListModels({});
+  console.log('Modelos (primeros 5):', models.data.models.slice(0, 5).map(m => m.id));
+
+  // Chat con GPT-3.5
+  const chat = await aiHandlers.nexusOpenAIChat({
+    prompt: 'Di hola en una sola palabra',
+    model: 'gpt-3.5-turbo',
+    temperature: 0.7,
+    maxTokens: 20,
+    stream: false
+  });
+  console.log('Respuesta:', chat.data.response);
+  console.log('Tokens:', chat.data.usage?.total_tokens);
+}
+
+test().catch(console.error);
+```
+
+```powershell
+node --env-file=.env test-ai.js
+```
+
 ## Configuration
 
 ### Environment Variables
 
-Configure the following environment variables to use AI tools:
+Los AI tools leen las variables de entorno **directamente** (sin prefijo `NEXUS_`).
+Copia `.env.example` a `.env` y rellena los valores:
 
 ```bash
-# Ollama (optional - for local LLMs)
-export OLLAMA_HOST=http://localhost:11434
+# Ollama — LLMs locales (no requiere API key)
+OLLAMA_HOST=http://localhost:11434
+NEXUS_AI_OLLAMA_DEFAULT_MODEL=llama2
 
-# Gemini (required)
-export GEMINI_API_KEY=your_gemini_api_key
+# Google Gemini
+GEMINI_API_KEY=your_gemini_api_key
+NEXUS_AI_GEMINI_MODEL=gemini-pro
 
-# OpenAI (required)
-export OPENAI_API_KEY=your_openai_api_key
+# OpenAI
+OPENAI_API_KEY=your_openai_api_key
+NEXUS_AI_OPENAI_MODEL=gpt-4-turbo-preview
 
-# Anthropic (required)
-export ANTHROPIC_API_KEY=your_anthropic_api_key
+# Anthropic Claude
+ANTHROPIC_API_KEY=your_anthropic_api_key
+NEXUS_AI_ANTHROPIC_MODEL=claude-3-sonnet-20240229
 ```
+
+> **Nota**: Las variables `NEXUS_AI_*` son para configuración general del servidor (modelo por defecto, tokens, temperatura). Las variables sin prefijo (`OPENAI_API_KEY`, etc.) son las que los tools leen para autenticarse.
 
 ### Getting API Keys
 

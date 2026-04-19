@@ -83,9 +83,98 @@
       "timestamp": "2026-04-18T02:12:08.330Z",
       "provider": "openai",
       "tokens": 462
+    },
+    {
+      "role": "user",
+      "content": "Hola, que es Nexus-MCP?",
+      "timestamp": "2026-04-18T13:49:42.377Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Nexus-MCP es una plataforma de gestión de la continuidad del negocio que ayuda a las organizaciones a planificar, implementar y mantener planes de continuidad del negocio de manera efectiva. Ofrece herramientas y recursos para ayudar a las empresas a identificar y gestionar los riesgos, mantener la resiliencia empresarial y garantizar la continuidad de las operaciones en caso de interrupciones o crisis.",
+      "timestamp": "2026-04-18T13:49:43.830Z",
+      "provider": "openai",
+      "tokens": 108
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-18T13:52:04.655Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué te puedo ayudar?",
+      "timestamp": "2026-04-18T13:52:06.260Z",
+      "provider": "openai",
+      "tokens": 20
+    },
+    {
+      "role": "user",
+      "content": "que  mcp tienes disponibles",
+      "timestamp": "2026-04-18T14:02:38.769Z"
+    },
+    {
+      "role": "assistant",
+      "content": "No tengo acceso directo a un listado de “MCPs disponibles” en tu entorno, a menos que la plataforma donde me estés usando me lo exponga.\n\nSi quieres, puedo ayudarte a:\n\n- **identificar qué MCPs tienes conectados** en esta sesión,\n- **probar uno específico** si me dices su nombre,\n- o **explicarte cómo listar los MCPs** según la herramienta que uses.\n\nSi tu interfaz soporta MCP, normalmente verás algo como:\n- herramientas disponibles,\n- servidores MCP conectados,\n- o integración con nombres tipo `filesystem`, `github`, `postgres`, etc.\n\nDime qué plataforma estás usando y te digo cómo verlos.",
+      "timestamp": "2026-04-18T14:02:40.919Z",
+      "provider": "openai",
+      "tokens": 153
+    },
+    {
+      "role": "user",
+      "content": "Mi nombre es Carlos",
+      "timestamp": "2026-04-18T14:03:36.142Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola Carlos! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2026-04-18T14:03:37.174Z",
+      "provider": "openai",
+      "tokens": 23
+    },
+    {
+      "role": "user",
+      "content": "Como me llamo?",
+      "timestamp": "2026-04-18T14:03:40.146Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Tu nombre es Carlos. ¿En qué más puedo ayudarte?",
+      "timestamp": "2026-04-18T14:03:40.710Z",
+      "provider": "openai",
+      "tokens": 65
+    },
+    {
+      "role": "user",
+      "content": "dame la informacion general del sistema",
+      "timestamp": "2026-04-18T14:20:51.776Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Claro. Aquí tienes la **información general del sistema**:\n\n- **Tipo de sistema:** Asistente de IA accesible vía API.\n- **Capacidades principales:** Responder preguntas, generar texto, resumir, explicar conceptos y ayudar con tareas de análisis o redacción.\n- **Idioma de interacción:** Puede comunicarse en varios idiomas, incluido español.\n- **Formato de respuesta:** Puede adaptar el nivel de detalle según lo que necesites.\n- **Contexto de uso:** Diseñado para asistir en consultas generales, técnicas y de contenido.\n- **Limitaciones:** No tiene acceso garantizado a información en tiempo real ni a sistemas externos, salvo que se le proporcionen o se integren herramientas específicas.\n\nSi quieres, también puedo darte la información general del sistema en formato:\n1. **técnico**,  \n2. **resumido para usuarios**, o  \n3. **tipo ficha de documentación**.",
+      "timestamp": "2026-04-18T14:20:53.615Z",
+      "provider": "openai",
+      "tokens": 202
+    },
+    {
+      "role": "user",
+      "content": "dame informacion del sistema",
+      "timestamp": "2026-04-18T14:32:38.407Z"
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-18T14:32:50.935Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué puedo ayudarte?",
+      "timestamp": "2026-04-18T14:32:51.965Z",
+      "provider": "openai",
+      "tokens": 562
     }
   ],
-  "totalTokens": 1755,
-  "messageCount": 7,
-  "lastUpdated": "2026-04-18T02:12:08.330Z"
+  "totalTokens": 2888,
+  "messageCount": 14,
+  "lastUpdated": "2026-04-18T14:32:51.965Z"
 }
