@@ -224,13 +224,18 @@ El indicador `[ctx:N turns]` muestra cuántos intercambios previos están activo
 | Comando | Descripción |
 |---|---|
 | `/menu` | Volver al menú de proveedores |
-| `/agent` | Activar/desactivar modo agente con tools (solo OpenAI) |
+| `/agent` | Activar/desactivar modo agente con tools (OpenAI, Ollama, Gemini) |
 | `/tools` | Listar los 72 tools disponibles con descripción |
 | `/tools <filtro>` | Filtrar tools por nombre o descripción (ej: `/tools git`, `/tools file`) |
+| `/manual <tool> [args]` | Ejecutar un tool manualmente (ej: `/manual nexus_uuid_generate`) |
+| `/danger-confirm` | Toggle confirmación de tools peligrosos (activado por defecto) |
 | `/reset` | Limpiar el contexto de la conversación sin salir de la sesión |
 | `/clear` | Limpiar la pantalla |
 | `/history` | Ver los últimos 6 mensajes del historial persistente |
 | `/tokens` | Ver tokens usados en la sesión, contexto activo y estado del agente |
+| `/agent-stats` | (Modo agente) Estadísticas de uso de tools en la sesión |
+| `/agent-history` | (Modo agente) Historial completo de tools ejecutados |
+| `/agent-verbose` | (Modo agente) Toggle modo detallado (JSON completo) |
 | `/help` | Mostrar la lista de comandos |
 | `/exit` | Salir de la CLI |
 
@@ -252,9 +257,9 @@ El indicador `[ctx:N turns]` muestra cuántos intercambios previos están activo
   Total: 15 tools para "git"
 ```
 
-### Modo Agente — OpenAI Function Calling
+### Modo Agente — Function Calling
 
-Cuando usas OpenAI como proveedor, puedes activar el **modo agente** con `/agent`. En este modo la IA tiene acceso a los tools de Nexus-MCP y los invoca automáticamente cuando los necesita para responder.
+El modo agente permite que la IA invoque automáticamente los tools de Nexus-MCP usando function calling. Está disponible con **OpenAI**, **Ollama** (local LLMs) y **Gemini** (Google AI). Actívalo con el comando `/agent`.
 
 ```
   ✓ Modo agente ACTIVADO
@@ -263,17 +268,17 @@ Cuando usas OpenAI como proveedor, puedes activar el **modo agente** con `/agent
 [🔧 agente] Tú  › dame información del sistema
 
   🔧 nexus_system_info  {}
-     → {"cpu":{"model":"12th Gen Intel i7-1255U","count":12}...
-  🔧 nexus_system_memory_info  {}
-     → {"freeGB":"10.27","usedGB":"29.42",...
+     → {"platform":"win32","arch":"x64","release":"10.0.19045"...
+     ⏱ 234ms  ✅ éxito
 
-AI   › El sistema tiene un i7-1255U con 12 núcleos y 10.27 GB de RAM libre.
-  ↳ 2341ms  ·  498 tokens
+AI   › Tu sistema es Windows 10 x64 llamado DESKTOP-N26CCCD...
+  ↳ 7517ms  ·  911 tokens
 
 [🔧 agente] Tú  › genera un UUID para esta sesión
 
   🔧 nexus_uuid_generate  {}
-     → {"uuid":"9d7dc0bf-f432-44da-a1d1-d9776d86ed8f",...
+     → {"uuid":"9d7dc0bf-f432-44da-a1d1-d9776d86ed8f"...
+     ⏱ 45ms  ✅ éxito
 
 AI   › Aquí tienes tu UUID: `9d7dc0bf-f432-44da-a1d1-d9776d86ed8f`
   ↳ 921ms  ·  201 tokens
@@ -281,6 +286,23 @@ AI   › Aquí tienes tu UUID: `9d7dc0bf-f432-44da-a1d1-d9776d86ed8f`
 [🔧 agente] Tú  › /agent   ← toggle OFF
   ○ Modo agente desactivado
 ```
+
+#### Mejoras Visuales del Modo Agente
+
+El modo agente incluye mejoras visuales para facilitar el debugging y el análisis:
+
+- **Colores por categoría**: Tools mostrados con colores según categoría (Utilities: verde, System: amarillo, Filesystem: azul, HTTP: magenta, Git: cyan, AI: rojo)
+- **Tiempo de ejecución**: Cada tool muestra su tiempo de ejecución en milisegundos
+- **Indicador de éxito/error**: ✅ éxito (verde) o ❌ error (rojo) para cada tool
+- **Formato mejorado**: Visualización clara con `🔧 tool_name args → resultado` + tiempo + estado
+
+#### Comandos Específicos del Agente
+
+Cuando el modo agente está activo, tienes acceso a comandos adicionales:
+
+- **`/agent-stats`**: Muestra estadísticas de uso de tools en la sesión (total ejecutados, tiempo total, conteo por tool)
+- **`/agent-history`**: Muestra historial completo de tools ejecutados con nombre, tiempo y estado
+- **`/agent-verbose`**: Toggle modo detallado (muestra JSON completo de resultados)
 
 #### Cómo funciona internamente (4 pasos)
 
@@ -297,7 +319,109 @@ AI   › Aquí tienes tu UUID: `9d7dc0bf-f432-44da-a1d1-d9776d86ed8f`
 - `nexus_system_info`, `nexus_system_memory_info`, `nexus_system_cpu_info`
 - `nexus_system_disk_info`, `nexus_system_network_info`, `nexus_system_os_info`
 
-> **Nota**: Solo disponible con OpenAI. GPT puede invocar múltiples tools en paralelo (parallel function calling) — el agente los ejecuta todos y devuelve todos los resultados antes de formular la respuesta.
+> **Nota**: Disponible con OpenAI, Ollama y Gemini. Los modelos pueden invocar múltiples tools en paralelo (parallel function calling) — el agente los ejecuta todos y devuelve todos los resultados antes de formular la respuesta. Ollama y Gemini no proporcionan token count.
+
+### Modo Híbrido — Ejecución Manual de Tools
+
+El comando `/manual` permite ejecutar cualquier tool de Nexus-MCP manualmente sin intervención de IA. Funciona con cualquier proveedor (no solo OpenAI) y muestra el resultado con el mismo formato visual que el modo agente.
+
+```
+[ctx:1 turn] Tú  › /manual nexus_uuid_generate
+
+  🔧 nexus_uuid_generate  {}
+     → {"uuid":"9d7dc0bf-f432-44da-a1d1-d9776d86ed8f"...
+     ⏱ 45ms  ✅ éxito
+
+[ctx:1 turn] Tú  › /manual nexus_hash_generate '{"text":"hola","algorithm":"sha256"}'
+
+  🔧 nexus_hash_generate  {"text":"hola","algorithm":"sha256"}
+     → {"hash":"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"...
+     ⏱ 78ms  ✅ éxito
+```
+
+#### Sintaxis
+
+```bash
+/manual <tool> [args_json]
+```
+
+- `<tool>`: Nombre del tool (ej: `nexus_uuid_generate`, `nexus_system_info`)
+- `[args_json]`: Argumentos opcionales en formato JSON (ej: `'{"text":"hola"}'`)
+
+#### Ejemplos
+
+```bash
+# Tool sin argumentos
+/manual nexus_uuid_generate
+
+# Tool con argumentos
+/manual nexus_hash_generate '{"text":"hola","algorithm":"sha256"}'
+
+# Tool de sistema
+/manual nexus_system_info
+
+# Tool con formato específico
+/manual nexus_timestamp '{"format":"iso"}'
+```
+
+#### Características
+
+- **Multi-proveedor**: Funciona con cualquier proveedor (Ollama, Gemini, OpenAI, Anthropic)
+- **Formato visual**: Muestra colores por categoría, tiempo de ejecución y estado de éxito
+- **Tracking**: Agrega al historial de tools (visible con `/agent-history`)
+- **Verbose compatible**: Respeta el modo `/agent-verbose` para JSON completo
+- **Error handling**: Muestra mensajes claros si el tool no existe o los argumentos son inválidos
+
+> **Nota**: Los tools ejecutados manualmente se agregan al mismo historial que los del modo agente, por lo que `/agent-stats` y `/agent-history` incluyen ambas ejecuciones.
+
+### Confirmación de Tools Peligrosos
+
+Para proteger tu sistema, algunos tools considerados peligrosos requieren confirmación antes de ejecutarse. La confirmación está activada por defecto y se puede desactivar con el comando `/danger-confirm`.
+
+#### Tools Peligrosos
+
+Los siguientes tools requieren confirmación:
+- `nexus_execute_command` - Ejecuta comandos de shell
+- `nexus_file_delete` - Borra archivos
+- `nexus_file_write` - Escribe archivos
+- `nexus_file_copy` - Copia archivos
+- `nexus_file_move` - Mueve archivos
+- `nexus_git_clone` - Clona repositorios
+
+#### Flujo de Confirmación
+
+**Modo manual:**
+```
+[ctx:1 turn] Tú  › /manual nexus_file_delete '{"path":"./test.txt"}'
+
+  ⚠ nexus_file_delete requiere confirmación
+  Comando: {"path":"./test.txt"}
+  ¿Ejecutar? [y/N]: n
+  ○ Ejecución cancelada
+```
+
+**Modo agente:**
+```
+[🔧 agente] Tú  › borra el archivo test.txt
+
+  ⚠ La IA quiere ejecutar 1 tool(s) peligroso(s):
+    - nexus_file_delete
+  ¿Permitir ejecución? [y/N]: y
+```
+
+#### Toggle de Confirmación
+
+```bash
+/danger-confirm
+```
+
+Muestra el estado actual de la confirmación y la lista de tools peligrosos:
+```
+  ✓ Confirmación de tools peligrosos ACTIVADA
+  Tools peligrosos (6): nexus_execute_command, nexus_file_delete, nexus_file_write, nexus_file_copy, nexus_file_move, nexus_git_clone
+```
+
+> **Nota**: La confirmación se aplica tanto al modo manual (`/manual`) como al modo agente. Si la IA intenta ejecutar un tool peligroso, se mostrará el prompt de confirmación antes de ejecutarlo.
 
 ### Historial persistente
 

@@ -10,7 +10,10 @@ const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const OpenAI = require('openai');
+const { Ollama } = require('ollama');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { zodToJsonSchema } = require('zod-to-json-schema');
+const { z } = require('zod');
 const { aiHandlers } = require('../dist/tools/ai/index.js');
 const { filesystemTools } = require('../dist/tools/filesystem/index.js');
 const { httpTools }        = require('../dist/tools/http/index.js');
@@ -42,6 +45,38 @@ const openaiToolDefs = AGENT_TOOL_LIST.map(t => ({
   function: { name: t.name, description: t.description, parameters: toOpenAIParams(t.inputSchema) },
 }));
 
+// ── Ollama Tool Definitions ──────────────────────────────────────────────────────
+const ollamaToolDefs = AGENT_TOOL_LIST.map(t => ({
+  type: 'function',
+  function: { name: t.name, description: t.description, parameters: toOpenAIParams(t.inputSchema) },
+}));
+
+// ── Gemini Tool Definitions ────────────────────────────────────────────────────
+function toGeminiToolDef(zodSchema) {
+  const clean = zodSchema.shape ? zodSchema.shape : {};
+  const properties = {};
+  const required = [];
+
+  for (const [key, value] of Object.entries(clean)) {
+    let type = 'string';
+    if (value instanceof z.ZodNumber) type = 'number';
+    else if (value instanceof z.ZodBoolean) type = 'boolean';
+    else if (value instanceof z.ZodArray) type = 'array';
+    else if (value instanceof z.ZodObject) type = 'object';
+
+    properties[key] = { type, description: value.description || '' };
+    if (!value.isOptional()) required.push(key);
+  }
+
+  return { type: 'object', properties, required };
+}
+
+const geminiToolDefs = AGENT_TOOL_LIST.map(t => ({
+  name: t.name,
+  description: t.description,
+  parameters: toGeminiToolDef(t.inputSchema),
+}));
+
 // ── Ejecuta un turno con OpenAI Function Calling ──────────────────────────────
 // Soporta múltiples tool_calls paralelos (GPT puede llamar varios tools a la vez)
 async function runAgentTurn(model, sessionMessages, userInput) {
@@ -62,17 +97,38 @@ async function runAgentTurn(model, sessionMessages, userInput) {
     return { text: msg.content, tokens: usage1, toolsUsed: [] };
   }
 
+  // Verificar si hay tools peligrosos y pedir confirmación
+  const dangerousTools = msg.tool_calls.filter(call => isDangerousTool(call.function.name));
+  if (dangerousTools.length > 0 && dangerConfirmEnabled) {
+    console.log(`\n  ${c.yellow}⚠ La IA quiere ejecutar ${dangerousTools.length} tool(s) peligroso(s):${c.reset}`);
+    dangerousTools.forEach(call => {
+      console.log(`  ${c.dim}  - ${call.function.name}${c.reset}`);
+    });
+    const answer = await ask(`  ${c.dim}¿Permitir ejecución? [y/N]:${c.reset} `);
+    if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+      console.log(`  ${c.dim}○ Ejecución cancelada${c.reset}\n`);
+      return { text: 'Ejecución de tools peligrosos cancelada por el usuario.', tokens: usage1, toolsUsed: [] };
+    }
+  }
+
   // Ejecutar TODOS los tool_calls en paralelo
   const executed = await Promise.all(msg.tool_calls.map(async call => {
     const toolName = call.function.name;
     const toolArgs = JSON.parse(call.function.arguments);
     const tool = agentToolIndex[toolName];
-    let result;
+    const toolStart = Date.now();
+    let result, success = false;
     try {
       const r = tool ? await tool.handler(toolArgs) : null;
-      result = r?.success ? r.data : { error: r?.error?.message || `Tool not found: ${toolName}` };
-    } catch (err) { result = { error: err.message }; }
-    return { call, toolName, toolArgs, result };
+      success = r?.success || false;
+      result = success ? r.data : { error: r?.error?.message || `Tool not found: ${toolName}` };
+    } catch (err) {
+      result = { error: err.message };
+      success = false;
+    }
+    const toolDuration = Date.now() - toolStart;
+    const category = tool?.category || 'unknown';
+    return { call, toolName, toolArgs, result, success, toolDuration, category };
   }));
 
   // Responder a TODOS los tool_call_ids (OpenAI lo requiere)
@@ -94,6 +150,158 @@ async function runAgentTurn(model, sessionMessages, userInput) {
   };
 }
 
+// ── Ejecuta un turno con Ollama Function Calling ────────────────────────────────
+async function runOllamaAgentTurn(model, sessionMessages, userInput) {
+  const ollama = new Ollama({ host: process.env.OLLAMA_HOST || 'http://localhost:11434' });
+  const messages = [
+    { role: 'system', content: 'Eres un asistente con acceso a herramientas de sistema y utilidades. Usa las herramientas disponibles cuando sean útiles para responder.' },
+    ...sessionMessages.map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: userInput },
+  ];
+
+  const first = await ollama.chat({
+    model,
+    messages,
+    tools: ollamaToolDefs,
+    stream: false,
+  });
+  const msg = first.message;
+
+  if (!msg.tool_calls?.length) {
+    return { text: msg.content, tokens: 0, toolsUsed: [] };
+  }
+
+  // Verificar si hay tools peligrosos y pedir confirmación
+  const dangerousTools = msg.tool_calls.filter(call => isDangerousTool(call.function.name));
+  if (dangerousTools.length > 0 && dangerConfirmEnabled) {
+    console.log(`\n  ${c.yellow}⚠ La IA quiere ejecutar ${dangerousTools.length} tool(s) peligroso(s):${c.reset}`);
+    dangerousTools.forEach(call => {
+      console.log(`  ${c.dim}  - ${call.function.name}${c.reset}`);
+    });
+    const answer = await ask(`  ${c.dim}¿Permitir ejecución? [y/N]:${c.reset} `);
+    if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+      console.log(`  ${c.dim}○ Ejecución cancelada${c.reset}\n`);
+      return { text: 'Ejecución de tools peligrosos cancelada por el usuario.', tokens: 0, toolsUsed: [] };
+    }
+  }
+
+  // Ejecutar tools en paralelo
+  const executed = await Promise.all(msg.tool_calls.map(async call => {
+    const toolName = call.function.name;
+    const toolArgs = JSON.parse(call.function.arguments);
+    const tool = agentToolIndex[toolName];
+    const toolStart = Date.now();
+    let result, success = false;
+    try {
+      const r = tool ? await tool.handler(toolArgs) : null;
+      success = r?.success || false;
+      result = success ? r.data : { error: r?.error?.message || `Tool not found: ${toolName}` };
+    } catch (err) {
+      result = { error: err.message };
+      success = false;
+    }
+    const toolDuration = Date.now() - toolStart;
+    const category = tool?.category || 'unknown';
+    return { call, toolName, toolArgs, result, success, toolDuration, category };
+  }));
+
+  // Responder a todos los tool_calls
+  const toolMessages = executed.map(({ call, result }) => ({
+    role: 'tool',
+    content: JSON.stringify(result),
+  }));
+
+  const second = await ollama.chat({
+    model,
+    messages: [...messages, msg, ...toolMessages],
+    stream: false,
+  });
+
+  return {
+    text: second.message.content,
+    tokens: 0, // Ollama no proporciona token count
+    toolsUsed: executed.map(e => ({ name: e.toolName, args: e.toolArgs, result: e.result })),
+  };
+}
+
+// ── Ejecuta un turno con Gemini Function Calling ─────────────────────────────
+async function runGeminiAgentTurn(model, sessionMessages, userInput) {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const geminiModel = genAI.getGenerativeModel({ 
+    model,
+    tools: geminiToolDefs,
+  });
+
+  // Convertir mensajes al formato de Gemini
+  const history = sessionMessages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const chat = geminiModel.startChat({ history });
+  const result = await chat.sendMessage(userInput);
+  const response = await result.response;
+  const text = response.text();
+
+  // Gemini function calling es más complejo, por ahora implementamos versión básica
+  // Si hay function calls, los ejecutamos
+  const functionCalls = response.functionCalls();
+  if (!functionCalls || functionCalls.length === 0) {
+    return { text, tokens: 0, toolsUsed: [] };
+  }
+
+  // Verificar si hay tools peligrosos
+  const dangerousTools = functionCalls.filter(call => isDangerousTool(call.name));
+  if (dangerousTools.length > 0 && dangerConfirmEnabled) {
+    console.log(`\n  ${c.yellow}⚠ La IA quiere ejecutar ${dangerousTools.length} tool(s) peligroso(s):${c.reset}`);
+    dangerousTools.forEach(call => {
+      console.log(`  ${c.dim}  - ${call.name}${c.reset}`);
+    });
+    const answer = await ask(`  ${c.dim}¿Permitir ejecución? [y/N]:${c.reset} `);
+    if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+      console.log(`  ${c.dim}○ Ejecución cancelada${c.reset}\n`);
+      return { text: 'Ejecución de tools peligrosos cancelada por el usuario.', tokens: 0, toolsUsed: [] };
+    }
+  }
+
+  // Ejecutar tools
+  const executed = await Promise.all(functionCalls.map(async call => {
+    const toolName = call.name;
+    const toolArgs = call.args;
+    const tool = agentToolIndex[toolName];
+    const toolStart = Date.now();
+    let result, success = false;
+    try {
+      const r = tool ? await tool.handler(toolArgs) : null;
+      success = r?.success || false;
+      result = success ? r.data : { error: r?.error?.message || `Tool not found: ${toolName}` };
+    } catch (err) {
+      result = { error: err.message };
+      success = false;
+    }
+    const toolDuration = Date.now() - toolStart;
+    const category = tool?.category || 'unknown';
+    return { toolName, toolArgs, result, success, toolDuration, category };
+  }));
+
+  // Enviar resultados de tools a Gemini
+  const functionResponseParts = executed.map(e => ({
+    functionResponse: {
+      name: e.toolName,
+      response: e.result,
+    },
+  }));
+
+  const followUpResult = await chat.sendMessage(functionResponseParts);
+  const followUpText = followUpResult.response.text();
+
+  return {
+    text: followUpText,
+    tokens: 0, // Gemini no proporciona token count fácilmente
+    toolsUsed: executed.map(e => ({ name: e.toolName, args: e.toolArgs, result: e.result })),
+  };
+}
+
 const ALL_TOOLS = [
   { cat: 'Filesystem', icon: '📁', tools: filesystemTools },
   { cat: 'HTTP',       icon: '🌐', tools: httpTools        },
@@ -102,6 +310,14 @@ const ALL_TOOLS = [
   { cat: 'AI',         icon: '🤖', tools: aiTools          },
   { cat: 'Utilities',  icon: '🔧', tools: utilitiesTools   },
 ];
+
+// ── Tool Index for Manual Execution ────────────────────────────────────────────
+const toolIndex = {};
+ALL_TOOLS.forEach(({ cat, tools }) => {
+  tools.forEach(tool => {
+    toolIndex[tool.name] = { ...tool, category: cat.toLowerCase() };
+  });
+});
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 const c = {
@@ -139,6 +355,117 @@ function addToHistory(role, content, meta = {}) {
   }
 }
 
+// ── Agent Tool History ───────────────────────────────────────────────────────
+let agentToolHistory = []; // { name, args, result, success, duration, category, timestamp }
+let agentVerboseMode = false;
+let dangerConfirmEnabled = true; // Confirmación de tools peligrosos activada por defecto
+
+// ── Dangerous Tools List ───────────────────────────────────────────────────────
+const DANGEROUS_TOOLS = [
+  'nexus_execute_command',  // Ejecuta comandos de shell
+  'nexus_file_delete',      // Borra archivos
+  'nexus_file_write',       // Escribe archivos
+  'nexus_file_copy',        // Copia archivos
+  'nexus_file_move',        // Mueve archivos
+  'nexus_git_clone',        // Clona repositorios (puede ser de fuentes no confiables)
+];
+
+function isDangerousTool(toolName) {
+  return DANGEROUS_TOOLS.includes(toolName);
+}
+
+async function confirmDangerousTool(toolName, args) {
+  if (!dangerConfirmEnabled) return true;
+  
+  console.log(`\n  ${c.yellow}⚠ ${toolName} requiere confirmación${c.reset}`);
+  console.log(`  ${c.dim}Comando:${c.reset} ${JSON.stringify(args)}`);
+  const answer = await ask(`  ${c.dim}¿Ejecutar? [y/N]:${c.reset} `);
+  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+}
+
+function getAgentStats() {
+  const stats = {};
+  let totalTime = 0;
+  agentToolHistory.forEach(t => {
+    stats[t.name] = (stats[t.name] || 0) + 1;
+    totalTime += t.toolDuration || 0;
+  });
+  return { count: agentToolHistory.length, stats, totalTime };
+}
+
+// ── Manual Tool Execution ───────────────────────────────────────────────────────
+async function executeToolManually(toolName, argsStr = '{}') {
+  const tool = toolIndex[toolName];
+  if (!tool) {
+    console.log(`\n  ${c.red}✗ Tool no encontrado: ${toolName}${c.reset}\n`);
+    return;
+  }
+
+  let args;
+  try {
+    args = argsStr ? JSON.parse(argsStr) : {};
+  } catch (err) {
+    console.log(`\n  ${c.red}✗ Error al parsear argumentos JSON: ${err.message}${c.reset}\n`);
+    return;
+  }
+
+  // Confirmación para tools peligrosos
+  if (isDangerousTool(toolName)) {
+    const confirmed = await confirmDangerousTool(toolName, args);
+    if (!confirmed) {
+      console.log(`  ${c.dim}○ Ejecución cancelada${c.reset}\n`);
+      return;
+    }
+  }
+
+  const toolStart = Date.now();
+  let result, success = false;
+  try {
+    const r = await tool.handler(args);
+    success = r?.success || false;
+    result = success ? r.data : { error: r?.error?.message || 'Error desconocido' };
+  } catch (err) {
+    result = { error: err.message };
+    success = false;
+  }
+  const toolDuration = Date.now() - toolStart;
+  const category = tool.category || 'unknown';
+
+  // Agregar al historial
+  addToAgentHistory({
+    name: toolName,
+    args,
+    result,
+    success,
+    toolDuration,
+    category
+  });
+
+  // Mostrar resultado con formato visual mejorado
+  console.log();
+  const categoryColor = {
+    'utilities': c.green,
+    'system': c.yellow,
+    'filesystem': c.blue,
+    'http': c.magenta,
+    'git': c.cyan,
+    'ai': c.red,
+    'unknown': c.white
+  }[category] || c.white;
+  const successIcon = success ? '✅' : '❌';
+  const successColor = success ? c.green : c.red;
+  console.log(`  ${c.yellow}🔧 ${categoryColor}${toolName}${c.reset}  ${c.dim}${JSON.stringify(args)}${c.reset}`);
+  
+  if (agentVerboseMode) {
+    console.log(`  ${c.dim}   →${c.reset} ${JSON.stringify(result, null, 2)}`);
+  } else {
+    const r = JSON.stringify(result).slice(0, 80);
+    console.log(`  ${c.dim}   → ${r}…${c.reset}`);
+  }
+  
+  console.log(`  ${c.dim}   ⏱ ${toolDuration}ms  ${successColor}${successIcon} ${success ? 'éxito' : 'error'}${c.reset}\n`);
+}
+
 // ── Providers ─────────────────────────────────────────────────────────────────
 const providers = {
   ollama:    { name: 'Ollama (Local LLMs)',  emoji: '🦙', color: c.magenta, chat: aiHandlers.nexusOllamaChat,    list: aiHandlers.nexusOllamaListModels,    defaultModel: 'llama2'                },
@@ -163,17 +490,68 @@ function banner() {
   console.log(`  ╚══════════════════════════════════════════════════════╝${c.reset}\n`);
 }
 
-function showHelp(agentMode) {
+function showHelp(agentMode, providerKey) {
   console.log(`\n${c.bright}  Comandos disponibles:${c.reset}`);
   console.log(`  ${c.cyan}/menu${c.reset}      Volver al menú de proveedores`);
-  console.log(`  ${c.cyan}/agent${c.reset}     ${agentMode ? c.green + '✓ Modo agente ACTIVO' + c.reset + ' (la IA usa tools de Nexus-MCP)' : 'Activar modo agente (solo OpenAI)'}`);
+  const agentAvailable = ['openai', 'ollama', 'gemini'].includes(providerKey);
+  console.log(`  ${c.cyan}/agent${c.reset}     ${agentMode ? c.green + '✓ Modo agente ACTIVO' + c.reset + ' (la IA usa tools de Nexus-MCP)' : (agentAvailable ? 'Activar modo agente (OpenAI, Ollama, Gemini)' : 'No disponible con este proveedor')}`);
   console.log(`  ${c.cyan}/tools${c.reset}     Listar todos los tools disponibles`);
+  console.log(`  ${c.cyan}/manual${c.reset}   Ejecutar un tool manualmente: /manual <tool> [args_json]`);
+  console.log(`  ${c.cyan}/danger-confirm${c.reset} Toggle confirmación de tools peligrosos`);
   console.log(`  ${c.cyan}/reset${c.reset}     Limpiar el contexto de la conversación`);
   console.log(`  ${c.cyan}/clear${c.reset}     Limpiar pantalla`);
   console.log(`  ${c.cyan}/history${c.reset}   Ver últimos 6 mensajes`);
   console.log(`  ${c.cyan}/tokens${c.reset}    Ver uso de tokens de la sesión`);
   console.log(`  ${c.cyan}/help${c.reset}      Mostrar esta ayuda`);
-  console.log(`  ${c.cyan}/exit${c.reset}      Salir\n`);
+  console.log(`  ${c.cyan}/exit${c.reset}      Salir`);
+  if (agentMode) {
+    console.log(`  ${c.cyan}/agent-stats${c.reset}  Estadísticas de uso de tools`);
+    console.log(`  ${c.cyan}/agent-history${c.reset} Historial de tools ejecutados`);
+    console.log(`  ${c.cyan}/agent-verbose${c.reset} Toggle modo detallado (JSON completo)`);
+    console.log(`\n${c.dim}  Modo agente: Tools mostrados con colores por categoría, tiempo de ejecución y estado${c.reset}\n`);
+  } else {
+    console.log();
+  }
+}
+
+function showAgentStats() {
+  const { count, stats, totalTime } = getAgentStats();
+  console.log(`\n${c.bright}  📊 Estadísticas del Agente${c.reset}\n`);
+  console.log(`  ${c.dim}Tools ejecutados:${c.reset} ${count}`);
+  console.log(`  ${c.dim}Tiempo total de tools:${c.reset} ${totalTime}ms\n`);
+  
+  if (Object.keys(stats).length > 0) {
+    console.log(`  ${c.bright}Por tool:${c.reset}`);
+    Object.entries(stats).forEach(([name, times]) => {
+      console.log(`  ${c.cyan}  - ${name}:${c.reset} ${times} vez${times > 1 ? 'es' : ''}`);
+    });
+    console.log();
+  }
+}
+
+function showAgentHistory() {
+  console.log(`\n${c.bright}  📜 Historial de Tools${c.reset}\n`);
+  
+  if (agentToolHistory.length === 0) {
+    console.log(`  ${c.dim}Sin tools ejecutados aún${c.reset}\n`);
+    return;
+  }
+  
+  agentToolHistory.forEach((t, i) => {
+    const categoryColor = {
+      'utilities': c.green,
+      'system': c.yellow,
+      'filesystem': c.blue,
+      'http': c.magenta,
+      'git': c.cyan,
+      'ai': c.red,
+      'unknown': c.white
+    }[t.category] || c.white;
+    const successIcon = t.success ? '✅' : '❌';
+    const successColor = t.success ? c.green : c.red;
+    console.log(`  ${c.dim}[${i + 1}]${c.reset} ${c.yellow}🔧 ${categoryColor}${t.name}${c.reset} ${c.dim}→${c.reset} ${t.toolDuration}ms ${successColor}${successIcon}${c.reset}`);
+  });
+  console.log();
 }
 
 const MAX_CONTEXT_TURNS = 6; // max pairs (user+assistant) kept in context
@@ -291,8 +669,8 @@ async function chatSession(providerKey, model) {
     if (input === '/exit')  { console.log(`\n${c.green}✓ ¡Hasta luego!${c.reset}\n`); rl.close(); process.exit(0); }
     if (input === '/menu')  return;
     if (input === '/agent') {
-      if (providerKey !== 'openai') {
-        console.log(`\n  ${c.yellow}⚠ El modo agente solo está disponible con OpenAI${c.reset}\n`);
+      if (!['openai', 'ollama', 'gemini'].includes(providerKey)) {
+        console.log(`\n  ${c.yellow}⚠ El modo agente solo está disponible con OpenAI, Ollama y Gemini${c.reset}\n`);
       } else {
         agentMode = !agentMode;
         console.log(`\n  ${agentMode ? c.green + '✓ Modo agente ACTIVADO' : c.dim + '○ Modo agente desactivado'}${c.reset}`);
@@ -307,13 +685,65 @@ async function chatSession(providerKey, model) {
       continue;
     }
     if (input === '/clear')   { console.clear(); sessionHeader(); continue; }
-    if (input === '/help')    { showHelp(agentMode); continue; }
+    if (input === '/help')    { showHelp(agentMode, providerKey); continue; }
     if (input === '/history') { showHistoryPreview(); continue; }
     if (input.startsWith('/tools')) { showTools(input.slice(6).trim()); continue; }
     if (input === '/tokens')  {
       console.log(`\n  ${c.dim}Sesión:${c.reset} ${sessionTokens} tokens  ${c.dim}Total acumulado:${c.reset} ${chatHistory.totalTokens} tokens`);
       console.log(`  ${c.dim}Contexto activo:${c.reset} ${Math.floor(sessionMessages.length / 2)} turnos (${sessionMessages.length} mensajes)`);
       console.log(`  ${c.dim}Modo agente:${c.reset} ${agentMode ? c.green + 'ACTIVO' + c.reset + ' (' + AGENT_TOOL_LIST.length + ' tools)' : c.dim + 'inactivo' + c.reset}\n`);
+      continue;
+    }
+    if (input === '/agent-stats') {
+      if (!agentMode) {
+        console.log(`\n  ${c.yellow}⚠ Este comando solo está disponible en modo agente${c.reset}\n`);
+      } else {
+        showAgentStats();
+      }
+      continue;
+    }
+    if (input === '/agent-history') {
+      if (!agentMode) {
+        console.log(`\n  ${c.yellow}⚠ Este comando solo está disponible en modo agente${c.reset}\n`);
+      } else {
+        showAgentHistory();
+      }
+      continue;
+    }
+    if (input === '/agent-verbose') {
+      if (!agentMode) {
+        console.log(`\n  ${c.yellow}⚠ Este comando solo está disponible en modo agente${c.reset}\n`);
+      } else {
+        agentVerboseMode = !agentVerboseMode;
+        console.log(`\n  ${agentVerboseMode ? c.green + '✓ Modo verbose ACTIVADO' : c.dim + '○ Modo verbose desactivado'}${c.reset}`);
+        if (agentVerboseMode) console.log(`  ${c.dim}Ahora se mostrará el JSON completo de los resultados${c.reset}`);
+        console.log();
+      }
+      continue;
+    }
+    if (input.startsWith('/manual')) {
+      const parts = input.slice(8).trim().split(/\s+/);
+      const toolName = parts[0];
+      const argsStr = parts.slice(1).join(' ') || '{}';
+      
+      if (!toolName) {
+        console.log(`\n  ${c.yellow}⚠ Uso: /manual <tool> [args_json]${c.reset}\n`);
+        console.log(`  ${c.dim}Ejemplos:${c.reset}`);
+        console.log(`  ${c.dim}  /manual nexus_uuid_generate${c.reset}`);
+        console.log(`  ${c.dim}  /manual nexus_hash_generate '{"text":"hola","algorithm":"sha256"}'${c.reset}\n`);
+        continue;
+      }
+      
+      await executeToolManually(toolName, argsStr);
+      continue;
+    }
+    if (input === '/danger-confirm') {
+      dangerConfirmEnabled = !dangerConfirmEnabled;
+      console.log(`\n  ${dangerConfirmEnabled ? c.green + '✓ Confirmación de tools peligrosos ACTIVADA' : c.dim + '○ Confirmación de tools peligrosos DESACTIVADA'}${c.reset}`);
+      if (dangerConfirmEnabled) {
+        console.log(`  ${c.dim}Tools peligrosos (${DANGEROUS_TOOLS.length}): ${DANGEROUS_TOOLS.join(', ')}${c.reset}`);
+      }
+      console.log();
       continue;
     }
 
@@ -323,19 +753,50 @@ async function chatSession(providerKey, model) {
     const start = Date.now();
     let text, tokens;
 
-    if (agentMode && providerKey === 'openai') {
-      // ── Modo agente: OpenAI Function Calling ─────────────────────────────
+    if (agentMode) {
+      // ── Modo agente: Function Calling ────────────────────────────────────────────
       try {
-        const turn = await runAgentTurn(model, sessionMessages.slice(0, -1), input);
+        let turn;
+        if (providerKey === 'openai') {
+          turn = await runAgentTurn(model, sessionMessages.slice(0, -1), input);
+        } else if (providerKey === 'ollama') {
+          turn = await runOllamaAgentTurn(model, sessionMessages.slice(0, -1), input);
+        } else if (providerKey === 'gemini') {
+          turn = await runGeminiAgentTurn(model, sessionMessages.slice(0, -1), input);
+        } else {
+          console.log(`\n  ${c.yellow}⚠ El modo agente solo está disponible con OpenAI, Ollama y Gemini${c.reset}\n`);
+          sessionMessages.pop();
+          continue;
+        }
+        
         text   = turn.text;
         tokens = turn.tokens;
 
         if (turn.toolsUsed?.length) {
           console.log();
           turn.toolsUsed.forEach(t => {
-            const r = JSON.stringify(t.result).slice(0, 80);
-            console.log(`  ${c.yellow}🔧 ${t.name}${c.reset}  ${c.dim}${JSON.stringify(t.args)}${c.reset}`);
-            console.log(`  ${c.dim}   → ${r}…${c.reset}`);
+            addToAgentHistory(t);
+            const categoryColor = {
+              'utilities': c.green,
+              'system': c.yellow,
+              'filesystem': c.blue,
+              'http': c.magenta,
+              'git': c.cyan,
+              'ai': c.red,
+              'unknown': c.white
+            }[t.category] || c.white;
+            const successIcon = t.success ? '✅' : '❌';
+            const successColor = t.success ? c.green : c.red;
+            console.log(`  ${c.yellow}🔧 ${categoryColor}${t.name}${c.reset}  ${c.dim}${JSON.stringify(t.args)}${c.reset}`);
+            
+            if (agentVerboseMode) {
+              console.log(`  ${c.dim}   →${c.reset} ${JSON.stringify(t.result, null, 2)}`);
+            } else {
+              const r = JSON.stringify(t.result).slice(0, 80);
+              console.log(`  ${c.dim}   → ${r}…${c.reset}`);
+            }
+            
+            console.log(`  ${c.dim}   ⏱ ${t.toolDuration}ms  ${successColor}${successIcon} ${t.success ? 'éxito' : 'error'}${c.reset}`);
           });
         }
       } catch (err) {

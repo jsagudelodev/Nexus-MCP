@@ -1321,7 +1321,203 @@ npm view nexus-ai-tools
 
 ---
 
-## 🏛️ **Principios Arquitectónicos**
+## � **Mejoras Visuales y Nuevos Comandos del Agente (Abril 2026 — Sesión de UX)**
+
+### **Mejoras Visuales**
+- ✅ **Colores por categoría**: Tools mostrados con colores según categoría (Utilities: verde, System: amarillo, Filesystem: azul, HTTP: magenta, Git: cyan, AI: rojo)
+- ✅ **Tiempo de ejecución**: Cada tool muestra su tiempo de ejecución en milisegundos
+- ✅ **Indicador de éxito/error**: ✅ éxito (verde) o ❌ error (rojo) para cada tool
+- ✅ **Formato mejorado**: Visualización clara con `🔧 tool_name args → resultado` + tiempo + estado
+
+### **Nuevos Comandos del Agente**
+- ✅ **`/agent-stats`**: Muestra estadísticas de uso de tools en la sesión:
+  - Total de tools ejecutados
+  - Tiempo total de ejecución
+  - Conteo por tool (cuántas veces se ejecutó cada uno)
+- ✅ **`/agent-history`**: Muestra historial completo de tools ejecutados:
+  - Lista numerada de todos los tools ejecutados
+  - Nombre con color por categoría
+  - Tiempo de ejecución
+  - Estado de éxito/error
+- ✅ **`/agent-verbose`**: Toggle modo detallado:
+  - Activa/desactiva visualización del JSON completo de resultados
+  - Útil para debugging y análisis detallado
+
+### **Tracking de Tools**
+- ✅ **Historial persistente**: `agentToolHistory[]` rastrea todos los tools ejecutados con metadatos
+- ✅ **Estadísticas en tiempo real**: `getAgentStats()` calcula contadores y tiempos
+- ✅ **Integración con visualización**: Cada tool ejecutado se agrega automáticamente al historial
+
+### **Documentación**
+- ✅ **`/help` actualizado**: Comandos del agente solo visibles cuando el modo está activo
+- ✅ **Descripción de mejoras**: `/help` incluye nota sobre colores por categoría, tiempo y estado
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo agente con mejoras visuales + 3 nuevos comandos + tracking completo
+- **Comandos totales**: 13 comandos (10 generales + 3 específicos del agente)
+- **Build**: ✅ Exitoso
+- **Documentación**: 98% completa
+
+---
+
+## 🔄 **Modo Híbrido — Ejecución Manual de Tools (Abril 2026 — Sesión de UX)**
+
+### **Comando `/manual`**
+- ✅ **Ejecución manual de tools**: Permite ejecutar cualquier tool de Nexus-MCP sin intervención de IA
+- ✅ **Sintaxis**: `/manual <tool> [args_json]`
+- ✅ **Argumentos JSON**: Soporta argumentos opcionales en formato JSON
+- ✅ **Formato visual**: Muestra resultado con el mismo formato que el modo agente (colores, tiempo, estado)
+- ✅ **Tracking**: Agrega al historial de tools (visible con `/agent-history`)
+- ✅ **Multi-proveedor**: Funciona con cualquier proveedor (no solo OpenAI)
+- ✅ **Verbose compatible**: Respeta el modo `/agent-verbose` para JSON completo
+
+### **Ejemplos de Uso**
+```bash
+# Ejecutar tool sin argumentos
+/manual nexus_uuid_generate
+
+# Ejecutar tool con argumentos
+/manual nexus_hash_generate '{"text":"hola","algorithm":"sha256"}'
+
+# Ejecutar tool de sistema
+/manual nexus_system_info
+
+# Ejecutar tool de timestamp
+/manual nexus_timestamp '{"format":"iso"}'
+```
+
+### **Función `executeToolManually`**
+- ✅ **Validación de tool**: Verifica que el tool exista en el índice
+- ✅ **Parseo de argumentos**: Parsea JSON de argumentos con manejo de errores
+- ✅ **Ejecución asíncrona**: Ejecuta el handler del tool y captura resultado
+- ✅ **Métricas**: Calcula tiempo de ejecución y estado de éxito
+- ✅ **Historial**: Agrega resultado a `agentToolHistory[]` para estadísticas
+
+### **Índice de Tools**
+- ✅ **`toolIndex`**: Objeto que indexa todos los 72 tools por nombre
+- ✅ **Metadatos**: Incluye categoría, handler y descripción
+- ✅ **Construcción automática**: Generado a partir de `ALL_TOOLS` al inicio
+
+### **Documentación**
+- ✅ **`/help` actualizado**: Incluye comando `/manual` con sintaxis y ejemplos
+- ✅ **Mensaje de error**: Muestra uso correcto cuando se invoca sin argumentos
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo agente + modo híbrido + mejoras visuales + tracking completo
+- **Comandos totales**: 14 comandos (11 generales + 3 específicos del agente)
+- **Build**: ✅ Exitoso
+- **Documentación**: 98% completa
+
+---
+
+## 🛡️ **Confirmación de Tools Peligrosos (Abril 2026 — Sesión de UX)**
+
+### **Comando `/danger-confirm`**
+- ✅ **Toggle de confirmación**: Activa/desactiva confirmación de tools peligrosos
+- ✅ **Activa por defecto**: La confirmación está activada por defecto para seguridad
+- ✅ **Lista de tools peligrosos**: 6 tools identificados como peligrosos
+- ✅ **Confirmación en modo manual**: Pide confirmación antes de ejecutar `/manual` en tools peligrosos
+- ✅ **Confirmación en modo agente**: Pide confirmación antes de ejecutar tools peligrosos invocados por la IA
+- ✅ **Cancelación**: Usuario puede cancelar ejecución respondiendo 'N' o cualquier cosa que no sea 'y'/'yes'
+
+### **Tools Peligrosos Identificados**
+- `nexus_execute_command` - Ejecuta comandos de shell (puede ejecutar cualquier comando del sistema)
+- `nexus_file_delete` - Borra archivos (puede borrar archivos importantes)
+- `nexus_file_write` - Escribe archivos (puede sobrescribir archivos importantes)
+- `nexus_file_copy` - Copia archivos (puede copiar archivos a ubicaciones sensibles)
+- `nexus_file_move` - Mueve archivos (puede mover archivos a ubicaciones sensibles)
+- `nexus_git_clone` - Clona repositorios (puede clonar de fuentes no confiables)
+
+### **Flujo de Confirmación**
+```
+[ctx:1 turn] Tú  › /manual nexus_file_delete '{"path":"./important.txt"}'
+
+  ⚠ nexus_file_delete requiere confirmación
+  Comando: {"path":"./important.txt"}
+  ¿Ejecutar? [y/N]: n
+  ○ Ejecución cancelada
+```
+
+### **Modo Agente**
+Cuando la IA intenta ejecutar tools peligrosos:
+```
+[🔧 agente] Tú  › borra el archivo test.txt
+
+  ⚠ La IA quiere ejecutar 1 tool(s) peligroso(s):
+    - nexus_file_delete
+  ¿Permitir ejecución? [y/N]: _
+```
+
+### **Funciones Implementadas**
+- ✅ **`isDangerousTool(toolName)`**: Verifica si un tool está en la lista de peligrosos
+- ✅ **`confirmDangerousTool(toolName, args)`**: Muestra prompt de confirmación
+- ✅ **`dangerConfirmEnabled`**: Variable global para toggle de confirmación
+- ✅ **Integración en `executeToolManually()`**: Confirmación antes de ejecución manual
+- ✅ **Integración en `runAgentTurn()`**: Confirmación antes de ejecución por IA
+
+### **Documentación**
+- ✅ **`/help` actualizado**: Incluye comando `/danger-confirm` con descripción
+- ✅ **Mensaje informativo**: Muestra lista de tools peligrosos cuando se activa la confirmación
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo agente + modo híbrido + confirmación de tools peligrosos + mejoras visuales + tracking completo
+- **Comandos totales**: 15 comandos (12 generales + 3 específicos del agente)
+- **Build**: ✅ Exitoso
+- **Documentación**: 98% completa
+
+---
+
+## 🤖 **Function Calling para Ollama y Gemini (Abril 2026 — Sesión de UX)**
+
+### **Extensión del Modo Agente**
+- ✅ **Ollama Function Calling**: Implementado soporte para function calling en Ollama (local LLMs)
+- ✅ **Gemini Function Calling**: Implementado soporte para function calling en Gemini (Google AI)
+- ✅ **Multi-proveedor**: El modo agente ahora funciona con OpenAI, Ollama y Gemini
+- ✅ **Confirmación de tools peligrosos**: Aplicado a todos los proveedores con function calling
+- ✅ **Formato visual consistente**: Misma visualización de tools para todos los proveedores
+- ✅ **Tracking unificado**: Historial de tools funciona independientemente del proveedor
+
+### **Implementación Técnica**
+
+#### **Ollama**
+- **API**: Uso de la API de tools de Ollama (formato compatible con OpenAI)
+- **Función**: `runOllamaAgentTurn()` - Ejecuta turno con function calling de Ollama
+- **Tool definitions**: `ollamaToolDefs` - Convertidos desde schemas Zod
+- **Ejecución paralela**: Soporta múltiples tool_calls en paralelo
+- **Limitación**: Ollama no proporciona token count
+
+#### **Gemini**
+- **API**: Uso de Function Calling de Google Generative AI SDK
+- **Función**: `runGeminiAgentTurn()` - Ejecuta turno con function calling de Gemini
+- **Tool definitions**: `geminiToolDefs` - Convertidos desde schemas Zod al formato de Gemini
+- **Formato de mensajes**: Conversión de mensajes al formato de Gemini (role: user/model)
+- **Function responses**: Envío de resultados de tools usando `functionResponse`
+- **Limitación**: Gemini no proporciona token count fácilmente
+
+#### **Schema Conversion**
+- **`toGeminiToolDef(zodSchema)`**: Convierte schemas Zod al formato de function calling de Gemini
+- **Mapeo de tipos**: string, number, boolean, array, object
+- **Required fields**: Detecta campos requeridos basándose en `isOptional()`
+
+### **Actualizaciones de CLI**
+- ✅ **Comando `/agent`**: Ahora disponible con OpenAI, Ollama y Gemini
+- ✅ **Mensaje de error**: Indica proveedores compatibles cuando se intenta activar en proveedor no soportado
+- ✅ **`/help` actualizado**: Muestra disponibilidad del modo agente según proveedor
+- ✅ **Selección dinámica**: `runAgentTurn()` selecciona la función correcta según proveedor
+
+### **Estado Actualizado**
+- **Herramientas Totales**: 72 registradas y funcionales
+- **AI Interactive CLI**: Modo agente con 3 proveedores (OpenAI, Ollama, Gemini) + modo híbrido + confirmación + mejoras visuales + tracking completo
+- **Comandos totales**: 15 comandos (12 generales + 3 específicos del agente)
+- **Build**: ✅ Exitoso
+- **Documentación**: 98% completa
+
+---
+
+## �️ **Principios Arquitectónicos**
 
 Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad production-grade. Ver [docs/architectural-principles.md](./docs/architectural-principles.md) para detalles completos:
 
@@ -1348,6 +1544,6 @@ Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad 
 
 ---
 
-**Última Actualización**: 2026-04-18 (Sesión AI Tools — Modo Agente)
+**Última Actualización**: 2026-04-19 (Sesión UX — Function Calling para Ollama y Gemini)
 **Versión**: 1.0.0-alpha
 **Autor**: Nexus Team
