@@ -292,9 +292,93 @@
       "timestamp": "2026-04-19T20:10:50.905Z",
       "provider": "openai",
       "tokens": 1716
+    },
+    {
+      "role": "user",
+      "content": "que mcp estan activos",
+      "timestamp": "2026-04-20T01:46:27.139Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, tu pregunta es un poco vaga y necesito más detalles para poder ayudarte. MCP puede significar varias cosas, ¿podrías especificar exactamente a qué te refieres con MCP? Si estás hablando de procesadores múltiples en una computadora, necesitaré realizar una verificación del sistema para determinarlo.",
+      "timestamp": "2026-04-20T01:46:31.201Z",
+      "provider": "openai",
+      "tokens": 521
+    },
+    {
+      "role": "user",
+      "content": "como me llamo",
+      "timestamp": "2026-04-20T01:51:36.641Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, como asistente de inteligencia artificial, no tengo acceso a información personal a menos que tú me la proporciones.",
+      "timestamp": "2026-04-20T01:51:38.848Z",
+      "provider": "openai",
+      "tokens": 40
+    },
+    {
+      "role": "user",
+      "content": "que es mcp",
+      "timestamp": "2026-04-20T01:52:11.521Z"
+    },
+    {
+      "role": "assistant",
+      "content": "MCP puede tener diferentes significados dependiendo del contexto. Aquí hay algunos ejemplos:\n\n1. Microsoft Certified Professional: Es una certificación otorgada por Microsoft que indica que el profesional ha estudiado y se ha demostrado competente con sus productos.\n\n2. MCP también podría referirse a Monocloruro de Fosfano, una sustancia química utilizada en la fumigación agrícola.\n\n3. En medicina, MCP puede referirse a la articulación metacarpofalángica, que es la articulación entre el metacarpo y las falanges de la mano.\n\n4. En el ámbito de la computación, MCP puede referirse a Master Control Program, un término usado en la película Tron.\n\nPor favor proporciona más contexto si ninguna de estas definiciones corresponde a lo que estás buscando.",
+      "timestamp": "2026-04-20T01:52:16.146Z",
+      "provider": "openai",
+      "tokens": 258
+    },
+    {
+      "role": "user",
+      "content": "mcp en ia",
+      "timestamp": "2026-04-20T01:52:37.656Z"
+    },
+    {
+      "role": "assistant",
+      "content": "En el contexto de la inteligencia artificial, el término MCP a menudo se refiere al \"Modelo de Perceptrón de McCulloch-Pitts\", que es uno de los primeros modelos de neuronas artificiales. Desarrollado por Warren McCulloch y Walter Pitts en 1943, este modelo es una representación simplificada de cómo se cree que las neuronas en el cerebro humano procesan la información.",
+      "timestamp": "2026-04-20T01:52:41.286Z",
+      "provider": "openai",
+      "tokens": 364
+    },
+    {
+      "role": "user",
+      "content": "Ahora cuando preguntes \"qué MCP están activos\", la IA responderá con los servidores MCP externos configurados, como Google News.",
+      "timestamp": "2026-04-20T01:57:07.156Z"
+    },
+    {
+      "role": "assistant",
+      "content": "En mi diseño actual, no tengo la capacidad específica para interactuar directamente con servidores externos como Google News u otros servidores MCP. Mi funcionalidad está basada en una serie de utilidades y herramientas integradas en el sistema, por lo que mi capacidad para responder a esa consulta específica estaría limitada a la información que tengo a mano. Como asistente, estoy diseñado para proporcionar ayuda y soporte, y eso incluye proporcionar información relevante siempre que sea posible. Sin embargo, no siempre puedo garantizar una respuesta a todas las consultas. ¿Hay algo más con lo que pueda asistirte hoy?",
+      "timestamp": "2026-04-20T01:57:11.940Z",
+      "provider": "openai",
+      "tokens": 608
+    },
+    {
+      "role": "user",
+      "content": "qué MCP están activos\",",
+      "timestamp": "2026-04-20T01:57:38.945Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, pero en el sistema actual no tengo la capacidad de determinar o listar cuáles Multiplexores de Control Maestro (Master Control Programs, MCP) están activos o en uso. Mi diseño como asistente AI se centra en proporcionar ayuda o información basada en una serie de utilidades y herramientas integradas en el sistema, pero no tengo la capacidad de interactuar directamente con hardware o servidores externos. ¿Puedo ayudarte con otra información?",
+      "timestamp": "2026-04-20T01:57:43.375Z",
+      "provider": "openai",
+      "tokens": 725
+    },
+    {
+      "role": "user",
+      "content": "que heramientas tienes",
+      "timestamp": "2026-04-20T01:59:59.042Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Tengo acceso a una variedad de funciones y herramientas que se pueden usar para manipular y proporcionar información. Aquí están:\n\n1. `nexus_json_parse`: Esta función permite analizar una cadena JSON y convertirla en un objeto.\n\n2. `nexus_json_stringify`: Esta función convierte un objeto en una cadena JSON.\n\n3. `nexus_base64_encode` y `nexus_base64_decode`: Estas funciones permiten codificar y decodificar texto en el formato Base64.\n\n4. `nexus_hash_generate`: Esta función genera un código hash de un texto utilizando algoritmos de hash como MD5, SHA1, SHA256, SHA512.\n\n5. `nexus_uuid_generate`: Genera un UUID (Universally Unique Identifier) v4.\n\n6. `nexus_timestamp`: Proporciona el sello de tiempo actual en varios formatos.\n\n7. `nexus_url_parse`: Analiza una URL en sus componentes.\n\n8. `nexus_system_info`, `nexus_system_os_info`, `nexus_system_cpu_info`, `nexus_system_memory_info`, `nexus_system_disk_info`, `nexus_system_network_info`: Estas funciones proporcionan información detallada sobre el sistema, incluidos detalles como la plataforma de sistema operativo, información de la CPU, memoria, disco y red.\n\nPor favor, hágamelo saber si quiere que use alguna de estas herramientas para obtener información.",
+      "timestamp": "2026-04-20T02:00:06.231Z",
+      "provider": "openai",
+      "tokens": 1041
     }
   ],
-  "totalTokens": 11089,
-  "messageCount": 24,
-  "lastUpdated": "2026-04-19T20:10:50.905Z"
+  "totalTokens": 14646,
+  "messageCount": 31,
+  "lastUpdated": "2026-04-20T02:00:06.231Z"
 }

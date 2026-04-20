@@ -36,20 +36,10 @@ const AGENT_TOOL_LIST = [
 ];
 const agentToolIndex = Object.fromEntries(AGENT_TOOL_LIST.map(t => [t.name, t]));
 
-// ── MCP Gateway Initialization ─────────────────────────────────────────────────
+// ── MCP Gateway Initialization (will be initialized after colors) ─────────────
 let mcpConfigManager, mcpRegistry, mcpDiscovery, mcpRouter;
 let mcpGatewayEnabled = false;
-
-try {
-  mcpConfigManager = new MCPGatewayConfigManager();
-  mcpRegistry = new MCPGatewayRegistry({ debug: false });
-  mcpDiscovery = new MCPGatewayDiscovery({ autoRefresh: false });
-  mcpRouter = new MCPGatewayRouter(mcpRegistry);
-  mcpGatewayEnabled = true;
-} catch (error) {
-  console.log(`  ${c.dim}○ MCP Gateway no disponible: ${error.message}${c.reset}`);
-  mcpGatewayEnabled = false;
-}
+let mcpServersLoaded = false;
 
 function toOpenAIParams(zodSchema) {
   try {
@@ -346,6 +336,80 @@ const c = {
   red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
   blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m', white: '\x1b[37m',
 };
+
+// ── MCP Gateway Initialization ─────────────────────────────────────────────────
+(async () => {
+  try {
+    mcpConfigManager = new MCPGatewayConfigManager();
+    mcpRegistry = new MCPGatewayRegistry({ debug: false });
+    mcpDiscovery = new MCPGatewayDiscovery({ autoRefresh: false });
+    mcpRouter = new MCPGatewayRouter(mcpRegistry);
+    mcpGatewayEnabled = true;
+
+    // Load and register external MCP servers
+    const servers = mcpConfigManager.getServers();
+    if (servers.length > 0) {
+      console.log(`  ${c.cyan}○ Cargando ${servers.length} servidores MCP externos...${c.reset}`);
+      for (const serverConfig of servers) {
+        try {
+          await mcpRegistry.registerServer(serverConfig);
+          console.log(`  ${c.green}✓${c.reset} Servidor '${serverConfig.name}' registrado`);
+        } catch (error) {
+          console.log(`  ${c.red}✗${c.reset} Error al registrar '${serverConfig.name}': ${error.message}`);
+        }
+      }
+      mcpServersLoaded = true;
+
+      // Add external tools to agent tool list
+      const externalRoutes = mcpRouter.listToolRoutes();
+      console.log(`  ${c.cyan}○ ${externalRoutes.length} tools externos disponibles${c.reset}`);
+
+      for (const route of externalRoutes) {
+        const proxyTool = {
+          name: route.qualifiedName,
+          description: `External tool from ${route.server}: ${route.tool}`,
+          inputSchema: z.object({}),
+          category: 'external',
+          version: '1.0.0',
+          handler: async (args) => {
+            try {
+              const result = await mcpRouter.routeToolCall(route.qualifiedName, args);
+              if (result.success) {
+                return { success: true, data: result.result };
+              } else {
+                return { success: false, error: new Error(result.error || 'Tool execution failed') };
+              }
+            } catch (error) {
+              return { success: false, error: error };
+            }
+          }
+        };
+
+        AGENT_TOOL_LIST.push(proxyTool);
+        agentToolIndex[route.qualifiedName] = proxyTool;
+        openaiToolDefs.push({
+          type: 'function',
+          function: {
+            name: route.qualifiedName,
+            description: proxyTool.description,
+            parameters: { type: 'object', properties: {}, required: [] }
+          }
+        });
+        ollamaToolDefs.push({
+          type: 'function',
+          function: {
+            name: route.qualifiedName,
+            description: proxyTool.description,
+            parameters: { type: 'object', properties: {}, required: [] }
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.log(`  ${c.dim}○ MCP Gateway no disponible: ${error.message}${c.reset}`);
+    mcpGatewayEnabled = false;
+  }
+})();
 
 // ── Readline ──────────────────────────────────────────────────────────────────
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });

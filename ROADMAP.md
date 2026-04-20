@@ -1710,8 +1710,66 @@ Implementar un MCP Gateway que permita a Nexus-MCP conectarse a servidores MCP e
 
 #### **Limitaciones Actuales**
 - ⏳ SSE transport no implementado (placeholder)
-- ⏳ No hay integración con el MCP server principal (tools externos no se agregan al modo agente)
-- ⏳ No hay soporte para tools externos en el modo agente
+- ✅ Integración con MCP server principal completada (tools externos ahora disponibles en modo agente)
+- ✅ Soporte para tools externos en modo agente implementado
+
+### **Integración con MCP Server Principal** ✅ COMPLETADA
+
+#### **Componentes Implementados**
+
+**1. Integración en src/index.ts**
+- ✅ Imports del MCP Gateway agregados
+- ✅ Instancias de ConfigManager, Registry, Discovery, Router
+- ✅ Inicialización automática de servidores externos desde config
+- ✅ Exposición de tools externos en ListTools handler
+- ✅ Routing de tool calls externos en CallTool handler
+- ✅ Cleanup del MCP Gateway en método stop
+
+**2. Categoría EXTERNAL**
+- ✅ Nueva categoría `ToolCategory.EXTERNAL` agregada a types.ts
+- ✅ Tools externos identificados con nombres calificados (server:tool)
+
+**3. Configuración**
+- ✅ `mcp-gateway.config.json` creado con servidor Google News de ejemplo
+- ✅ Carga automática de servidores externos al iniciar
+
+**4. Funcionalidad**
+- ✅ Tools externos visibles en list tools
+- ✅ Tools externos ejecutables a través del router
+- ✅ Soporte para múltiples servidores externos simultáneos
+- ✅ Manejo de errores robusto para conexiones externas
+
+#### **Uso en Modo Agente**
+Ahora cuando preguntes "qué MCP están activos", la IA responderá con los servidores MCP externos configurados, como Google News.
+
+### **Integración con CLI Interactiva** ✅ COMPLETADA
+
+#### **Componentes Implementados**
+
+**1. Inicialización en examples/ai-interactive-cli.js**
+- ✅ Instancias del MCP Gateway agregadas
+- ✅ Carga automática de servidores externos al iniciar CLI
+- ✅ Mensajes de estado para cada servidor registrado
+- ✅ Manejo de errores robusto para conexiones fallidas
+
+**2. Tools Proxy para Modo Agente**
+- ✅ Creación de tools proxy para cada tool externo
+- ✅ Tools proxy agregados a AGENT_TOOL_LIST
+- ✅ Tools proxy agregados a agentToolIndex
+- ✅ Tools proxy agregados a openaiToolDefs y ollamaToolDefs
+- ✅ Handler de tools proxy usando mcpRouter.routeToolCall
+
+**3. Funcionalidad**
+- ✅ Servidores MCP externos visibles al iniciar CLI
+- ✅ Tools externos disponibles para function calling
+- ✅ La IA puede usar tools como google-news:search
+- ✅ Soporte para múltiples proveedores (OpenAI, Ollama, Gemini, Anthropic)
+
+#### **Prueba Exitosa**
+```
+✓ Servidor 'google-news' registrado
+○ 1 tools externos disponibles
+```
 
 ### **Integración con Google News MCP Server** ✅ COMPLETADA
 
@@ -1857,6 +1915,6 @@ Este proyecto sigue principios arquitectónicos estrictos para asegurar calidad 
 
 ---
 
-**Última Actualización**: 2026-04-19 (Sesión de Arquitectura — Integración Google News MCP Server)
+**Última Actualización**: 2026-04-19 (Sesión de Arquitectura — Integración MCP Gateway con CLI Interactiva)
 **Versión**: 1.0.0-alpha
 **Autor**: Nexus Team

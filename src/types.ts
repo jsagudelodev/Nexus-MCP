@@ -23,7 +23,8 @@ export enum ToolCategory {
   DATABASE = 'database',
   SYSTEM = 'system',
   AI = 'ai',
-  UTILITIES = 'utilities'
+  UTILITIES = 'utilities',
+  EXTERNAL = 'external'
 }
 
 /**

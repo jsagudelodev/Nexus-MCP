@@ -30,6 +30,10 @@ import { gitTools } from './tools/git/index.js';
 import { systemTools } from './tools/system/index.js';
 import { aiTools } from './tools/ai/index.js';
 import { utilitiesTools } from './tools/utilities/index.js';
+import { MCPGatewayConfigManager } from './mcp-gateway/config.js';
+import { MCPGatewayRegistry } from './mcp-gateway/registry.js';
+import { MCPGatewayDiscovery } from './mcp-gateway/discovery.js';
+import { MCPGatewayRouter } from './mcp-gateway/router.js';
 
 // ============================================================================
 // Helpers
@@ -180,6 +184,13 @@ class NexusMCPServer {
   private initialized: boolean = false;
   private rateLimiter: RateLimiter | null = null;
 
+  // MCP Gateway components
+  private mcpConfigManager: MCPGatewayConfigManager | null = null;
+  private mcpRegistry: MCPGatewayRegistry | null = null;
+  private mcpDiscovery: MCPGatewayDiscovery | null = null;
+  private mcpRouter: MCPGatewayRouter | null = null;
+  private mcpGatewayEnabled: boolean = false;
+
   constructor() {
     this.toolRegistry = new ToolRegistry();
     this.server = new Server(
@@ -193,7 +204,7 @@ class NexusMCPServer {
         }
       }
     );
-    
+
     this.setupHandlers();
   }
 
@@ -204,12 +215,30 @@ class NexusMCPServer {
     // List tools handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = this.toolRegistry.listAll();
+      const toolList: Tool[] = tools.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema as unknown as Tool['inputSchema']
+      }));
+
+      // Add external MCP server tools if gateway is enabled
+      if (this.mcpGatewayEnabled && this.mcpRouter) {
+        const externalRoutes = this.mcpRouter.listToolRoutes();
+        for (const route of externalRoutes) {
+          toolList.push({
+            name: route.qualifiedName,
+            description: `External tool from ${route.server}: ${route.tool}`,
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: []
+            } as Tool['inputSchema']
+          });
+        }
+      }
+
       return {
-        tools: tools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema as unknown as Tool['inputSchema']
-        }))
+        tools: toolList
       } satisfies ListToolsResult;
     });
 
@@ -232,6 +261,29 @@ class NexusMCPServer {
         tool: toolName,
         args: JSON.stringify(sanitizeArgs(args))
       });
+
+      // Check if tool is from external MCP server
+      if (this.mcpGatewayEnabled && this.mcpRouter && toolName.includes(':')) {
+        try {
+          const routeResult = await this.mcpRouter.routeToolCall(toolName, args);
+          if (routeResult.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(routeResult.result, null, 2) }]
+            };
+          } else {
+            return {
+              content: [{ type: 'text', text: `Error: ${routeResult.error}` }],
+              isError: true
+            };
+          }
+        } catch (error) {
+          logger.error('External MCP tool execution error', { tool: toolName, error });
+          return {
+            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
+            isError: true
+          };
+        }
+      }
 
       const tool = this.toolRegistry.get(toolName);
       if (!tool) {
@@ -414,6 +466,35 @@ class NexusMCPServer {
         logger.info('Utilities tools registered', { count: utilitiesTools.length });
       }
 
+      // Initialize MCP Gateway
+      try {
+        this.mcpConfigManager = new MCPGatewayConfigManager();
+        this.mcpRegistry = new MCPGatewayRegistry({ debug: false });
+        this.mcpDiscovery = new MCPGatewayDiscovery({ autoRefresh: false });
+        this.mcpRouter = new MCPGatewayRouter(this.mcpRegistry);
+
+        // Load and register external MCP servers from config
+        const servers = this.mcpConfigManager.getServers();
+        if (servers.length > 0) {
+          logger.info('Loading external MCP servers', { count: servers.length });
+          for (const serverConfig of servers) {
+            try {
+              await this.mcpRegistry.registerServer(serverConfig);
+              logger.info(`External MCP server registered: ${serverConfig.name}`);
+            } catch (error) {
+              logger.error(`Failed to register external MCP server: ${serverConfig.name}`, { error });
+            }
+          }
+          this.mcpGatewayEnabled = true;
+          logger.info('MCP Gateway enabled', { servers: servers.length });
+        } else {
+          logger.info('No external MCP servers configured, MCP Gateway disabled');
+        }
+      } catch (error) {
+        logger.warn('Failed to initialize MCP Gateway', { error });
+        this.mcpGatewayEnabled = false;
+      }
+
       this.initialized = true;
       logger.info('Nexus-MCP Server initialized successfully');
     } catch (error) {
@@ -455,6 +536,17 @@ class NexusMCPServer {
    */
   async stop(): Promise<void> {
     try {
+      // Cleanup MCP Gateway
+      if (this.mcpGatewayEnabled) {
+        if (this.mcpRegistry) {
+          await this.mcpRegistry.disconnectAll();
+        }
+        if (this.mcpDiscovery) {
+          this.mcpDiscovery.destroy();
+        }
+        logger.info('MCP Gateway stopped');
+      }
+
       await this.server.close();
       logger.info('Nexus-MCP Server stopped');
     } catch (error) {

@@ -1,0 +1,15 @@
+{
+  "servers": [
+    {
+      "name": "google-news",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["node_modules/@chanmeng666/google-news-server/dist/index.js"],
+      "env": {
+        "SERP_API_KEY": ""
+      }
+    }
+  ],
+  "defaultTimeout": 30000,
+  "enableDiscovery": true
+}
