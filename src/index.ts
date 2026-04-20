@@ -32,6 +32,57 @@ import { aiTools } from './tools/ai/index.js';
 import { utilitiesTools } from './tools/utilities/index.js';
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+const SENSITIVE_KEYS = new Set([
+  'password', 'passwd', 'secret', 'token', 'api_key', 'apikey', 'apiKey',
+  'authorization', 'auth', 'credential', 'private_key', 'privateKey',
+  'access_key', 'accessKey', 'client_secret', 'clientSecret'
+]);
+
+function sanitizeArgs(args: unknown): unknown {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return args;
+  const sanitized: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(args as Record<string, unknown>)) {
+    sanitized[k] = SENSITIVE_KEYS.has(k.toLowerCase()) ? '[REDACTED]' : v;
+  }
+  return sanitized;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, toolName: string): Promise<T> {
+  const timer = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`Tool '${toolName}' timed out after ${ms}ms`)), ms)
+  );
+  return Promise.race([promise, timer]);
+}
+
+class RateLimiter {
+  private timestamps: number[] = [];
+  private maxRequests: number;
+  private windowMs: number;
+
+  constructor(maxRequests: number, windowMs: number) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+  }
+
+  isAllowed(): boolean {
+    const now = Date.now();
+    this.timestamps = this.timestamps.filter(t => now - t < this.windowMs);
+    if (this.timestamps.length >= this.maxRequests) return false;
+    this.timestamps.push(now);
+    return true;
+  }
+
+  status(): { requests: number; limit: number; windowMs: number } {
+    const now = Date.now();
+    this.timestamps = this.timestamps.filter(t => now - t < this.windowMs);
+    return { requests: this.timestamps.length, limit: this.maxRequests, windowMs: this.windowMs };
+  }
+}
+
+// ============================================================================
 // Tool Registry
 // ============================================================================
 
@@ -127,6 +178,7 @@ class NexusMCPServer {
   private server: Server;
   private toolRegistry: ToolRegistry;
   private initialized: boolean = false;
+  private rateLimiter: RateLimiter | null = null;
 
   constructor() {
     this.toolRegistry = new ToolRegistry();
@@ -166,53 +218,58 @@ class NexusMCPServer {
       const toolName = request.params.name;
       const args = request.params.arguments;
 
+      // Rate limiting
+      if (this.rateLimiter && !this.rateLimiter.isAllowed()) {
+        const status = this.rateLimiter.status();
+        logger.warn('Rate limit exceeded', { tool: toolName, ...status });
+        return {
+          content: [{ type: 'text', text: `Rate limit exceeded: ${status.requests}/${status.limit} requests in ${status.windowMs}ms window` }],
+          isError: true
+        };
+      }
+
       logger.info('Tool execution requested', {
         tool: toolName,
-        args: JSON.stringify(args)
+        args: JSON.stringify(sanitizeArgs(args))
       });
 
       const tool = this.toolRegistry.get(toolName);
       if (!tool) {
         return {
-          content: [{
-            type: 'text',
-            text: `Tool not found: ${toolName}`
-          }],
+          content: [{ type: 'text', text: `Tool not found: ${toolName}` }],
           isError: true
         };
+      }
+
+      // Deprecated tool warning
+      if (tool.deprecated) {
+        logger.warn(`Tool '${toolName}' is deprecated and may be removed in a future version`);
       }
 
       // Validate arguments
       const validationResult = validateSchema(tool.inputSchema, args);
       if (!validationResult.valid) {
         return {
-          content: [{
-            type: 'text',
-            text: `Validation error: ${validationResult.error}`
-          }],
+          content: [{ type: 'text', text: `Validation error: ${validationResult.error}` }],
           isError: true
         };
       }
 
-      // Execute tool
+      // Execute tool with timeout
+      const config = getConfig();
+      const timeoutMs = config.tools.system.max_execution_time;
       const result = await withErrorHandling(
-        () => tool.handler(args as never),
+        () => withTimeout(tool.handler(args as never), timeoutMs, toolName),
         { tool: toolName }
       );
 
       if (result.success) {
         return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify(result.data, null, 2)
-          }]
+          content: [{ type: 'text', text: JSON.stringify(result.data, null, 2) }]
         };
       } else {
         return {
-          content: [{
-            type: 'text',
-            text: `Error: ${result.error?.message}`
-          }],
+          content: [{ type: 'text', text: `Error: ${result.error?.message}` }],
           isError: true
         };
       }
@@ -286,6 +343,18 @@ class NexusMCPServer {
         environment: config.server.environment
       });
 
+      // Initialize rate limiter if enabled
+      if (config.security.enable_rate_limiting) {
+        this.rateLimiter = new RateLimiter(
+          config.security.rate_limit_requests,
+          config.security.rate_limit_window
+        );
+        logger.info('Rate limiter enabled', {
+          maxRequests: config.security.rate_limit_requests,
+          windowMs: config.security.rate_limit_window
+        });
+      }
+
       // Log enabled tools
       const enabledTools: string[] = [];
       if (config.tools.filesystem.enabled) enabledTools.push('filesystem');
@@ -294,7 +363,7 @@ class NexusMCPServer {
       if (config.tools.database.enabled) enabledTools.push('database');
       if (config.tools.system.enabled) enabledTools.push('system');
       if (config.tools.ai.enabled) enabledTools.push('ai');
-      
+
       logger.info('Enabled tool categories', { categories: enabledTools });
 
       // Register filesystem tools if enabled

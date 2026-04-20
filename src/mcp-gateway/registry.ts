@@ -11,6 +11,7 @@ import type {
   MCPServerConnection,
   MCPTool,
   MCPClientOptions,
+  IDisconnectable,
 } from './types.js';
 
 export class MCPGatewayRegistry {
@@ -42,6 +43,7 @@ export class MCPGatewayRegistry {
         tools: new Map(tools.map(t => [t.name, t])),
         connected: true,
         lastConnected: new Date(),
+        client: client as IDisconnectable,
       };
 
       this.connections.set(config.name, connection);
@@ -66,10 +68,8 @@ export class MCPGatewayRegistry {
 
     logger.info(`Unregistering MCP server: ${name}`);
 
-    // Disconnect the client if it's connected
-    const client = new MCPClient(connection.config, this.clientOptions);
-    if (connection.connected) {
-      await client.disconnect();
+    if (connection.connected && connection.client) {
+      await connection.client.disconnect();
     }
 
     this.connections.delete(name);
@@ -122,17 +122,23 @@ export class MCPGatewayRegistry {
 
     logger.info(`Refreshing tools for MCP server: ${name}`);
 
-    const client = new MCPClient(connection.config, this.clientOptions);
-    try {
+    let client = connection.client as MCPClient | undefined;
+    const needsNewClient = !client || !client.isConnected();
+
+    if (needsNewClient) {
+      client = new MCPClient(connection.config, this.clientOptions);
       await client.connect();
-      const tools = await this.discoverTools(client);
-      
+    }
+
+    try {
+      const tools = await this.discoverTools(client!);
+
       connection.tools.clear();
       tools.forEach(t => connection.tools.set(t.name, t));
       connection.lastConnected = new Date();
       connection.connected = true;
+      connection.client = client as IDisconnectable;
 
-      await client.disconnect();
       logger.info(`Successfully refreshed tools for MCP server: ${name}`, { toolCount: tools.length });
     } catch (error) {
       logger.error(`Failed to refresh tools for MCP server: ${name}`, { error });

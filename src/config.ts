@@ -419,11 +419,171 @@ let config: NexusConfig | null = null;
  * Load configuration from environment variables
  */
 function loadEnvConfig(): Partial<NexusConfig> {
-  // Load environment variables from .env file
   dotenv.config();
-  
-  // Return empty for now - env variables will be read directly in loadConfig
-  return {};
+  const env = process.env;
+
+  const bool = (v: string | undefined): boolean => v === 'true';
+  const int  = (v: string | undefined, def = 0): number => (v ? parseInt(v, 10) : def);
+  const flt  = (v: string | undefined, def = 0): number => (v ? parseFloat(v)    : def);
+  const arr  = (v: string | undefined): string[] | undefined =>
+    v ? v.split(',').map(s => s.trim()) : undefined;
+
+  const result: any = {};
+
+  // ---- Server / Logging ----
+  const logging: any = {};
+  if (env.NEXUS_LOG_LEVEL) { result.server = { log_level: env.NEXUS_LOG_LEVEL }; logging.level = env.NEXUS_LOG_LEVEL; }
+  if (env.NEXUS_LOG_FORMAT) logging.format = env.NEXUS_LOG_FORMAT;
+  if (env.NEXUS_LOG_OUTPUT) logging.output = env.NEXUS_LOG_OUTPUT;
+  if (env.NEXUS_LOG_FILE)   logging.file   = env.NEXUS_LOG_FILE;
+  if (Object.keys(logging).length) result.logging = logging;
+
+  const tools: any = {};
+
+  // ---- Filesystem ----
+  const filesystem: any = {};
+  if (env.NEXUS_FILESYSTEM_ENABLED !== undefined)     filesystem.enabled       = bool(env.NEXUS_FILESYSTEM_ENABLED);
+  if (env.NEXUS_FILESYSTEM_ALLOWED_PATHS)             filesystem.allowed_paths = arr(env.NEXUS_FILESYSTEM_ALLOWED_PATHS);
+  if (env.NEXUS_FILESYSTEM_MAX_FILE_SIZE)             filesystem.max_file_size = env.NEXUS_FILESYSTEM_MAX_FILE_SIZE;
+  if (env.NEXUS_FILESYSTEM_WATCH_ENABLED !== undefined) filesystem.watch_enabled = bool(env.NEXUS_FILESYSTEM_WATCH_ENABLED);
+  if (Object.keys(filesystem).length) tools.filesystem = filesystem;
+
+  // ---- HTTP ----
+  const http: any = {};
+  if (env.NEXUS_HTTP_ENABLED !== undefined) http.enabled       = bool(env.NEXUS_HTTP_ENABLED);
+  if (env.NEXUS_HTTP_TIMEOUT)               http.timeout       = int(env.NEXUS_HTTP_TIMEOUT);
+  if (env.NEXUS_HTTP_MAX_REDIRECTS)         http.max_redirects = int(env.NEXUS_HTTP_MAX_REDIRECTS);
+  if (env.NEXUS_HTTP_USER_AGENT)            http.user_agent    = env.NEXUS_HTTP_USER_AGENT;
+  if (env.NEXUS_HTTP_PROXY_HOST || env.NEXUS_HTTP_PROXY_PORT) {
+    http.proxy = {
+      host: env.NEXUS_HTTP_PROXY_HOST || '',
+      port: int(env.NEXUS_HTTP_PROXY_PORT, 8080),
+      ...(env.NEXUS_HTTP_PROXY_USERNAME && { username: env.NEXUS_HTTP_PROXY_USERNAME }),
+      ...(env.NEXUS_HTTP_PROXY_PASSWORD && { password: env.NEXUS_HTTP_PROXY_PASSWORD }),
+    };
+  }
+  if (Object.keys(http).length) tools.http = http;
+
+  // ---- Git ----
+  const git: any = {};
+  if (env.NEXUS_GIT_ENABLED !== undefined)   git.enabled        = bool(env.NEXUS_GIT_ENABLED);
+  if (env.NEXUS_GIT_DEFAULT_BRANCH)          git.default_branch = env.NEXUS_GIT_DEFAULT_BRANCH;
+  if (env.NEXUS_GIT_SSH_KEY_PATH)            git.ssh_key_path   = env.NEXUS_GIT_SSH_KEY_PATH;
+  if (env.NEXUS_GIT_SSH_KEY_PASSPHRASE)      git.ssh_key_passphrase = env.NEXUS_GIT_SSH_KEY_PASSPHRASE;
+  if (env.NEXUS_GIT_GITHUB_TOKEN)    git.github    = { token: env.NEXUS_GIT_GITHUB_TOKEN,    api_url: 'https://api.github.com' };
+  if (env.NEXUS_GIT_GITLAB_TOKEN)    git.gitlab    = { token: env.NEXUS_GIT_GITLAB_TOKEN,    api_url: 'https://gitlab.com/api/v4' };
+  if (env.NEXUS_GIT_BITBUCKET_USERNAME || env.NEXUS_GIT_BITBUCKET_APP_PASSWORD) {
+    git.bitbucket = {
+      api_url: 'https://api.bitbucket.org/2.0',
+      ...(env.NEXUS_GIT_BITBUCKET_USERNAME     && { username:     env.NEXUS_GIT_BITBUCKET_USERNAME }),
+      ...(env.NEXUS_GIT_BITBUCKET_APP_PASSWORD && { app_password: env.NEXUS_GIT_BITBUCKET_APP_PASSWORD }),
+    };
+  }
+  if (Object.keys(git).length) tools.git = git;
+
+  // ---- Database ----
+  const database: any = {};
+  if (env.NEXUS_DATABASE_ENABLED !== undefined)      database.enabled            = bool(env.NEXUS_DATABASE_ENABLED);
+  if (env.NEXUS_DATABASE_DEFAULT_CONNECTION)         database.default_connection = env.NEXUS_DATABASE_DEFAULT_CONNECTION;
+  if (env.NEXUS_DB_POSTGRESQL_HOST || env.NEXUS_DB_POSTGRESQL_PASSWORD) {
+    database.postgresql = {
+      host:     env.NEXUS_DB_POSTGRESQL_HOST     || 'localhost',
+      port:     int(env.NEXUS_DB_POSTGRESQL_PORT, 5432),
+      database: env.NEXUS_DB_POSTGRESQL_DATABASE || 'nexus',
+      user:     env.NEXUS_DB_POSTGRESQL_USER     || 'nexus',
+      password: env.NEXUS_DB_POSTGRESQL_PASSWORD || '',
+      ssl:      bool(env.NEXUS_DB_POSTGRESQL_SSL),
+    };
+  }
+  if (env.NEXUS_DB_MYSQL_HOST || env.NEXUS_DB_MYSQL_PASSWORD) {
+    database.mysql = {
+      host:     env.NEXUS_DB_MYSQL_HOST     || 'localhost',
+      port:     int(env.NEXUS_DB_MYSQL_PORT, 3306),
+      database: env.NEXUS_DB_MYSQL_DATABASE || 'nexus',
+      user:     env.NEXUS_DB_MYSQL_USER     || 'nexus',
+      password: env.NEXUS_DB_MYSQL_PASSWORD || '',
+      ssl:      bool(env.NEXUS_DB_MYSQL_SSL),
+    };
+  }
+  if (env.NEXUS_DB_SQLITE_PATH) database.sqlite = { path: env.NEXUS_DB_SQLITE_PATH, mode: 'read-write' };
+  if (env.NEXUS_DB_SQLSERVER_HOST || env.NEXUS_DB_SQLSERVER_PASSWORD) {
+    database.sqlserver = {
+      host:     env.NEXUS_DB_SQLSERVER_HOST     || 'localhost',
+      port:     int(env.NEXUS_DB_SQLSERVER_PORT, 1433),
+      database: env.NEXUS_DB_SQLSERVER_DATABASE || 'nexus',
+      user:     env.NEXUS_DB_SQLSERVER_USER     || 'nexus',
+      password: env.NEXUS_DB_SQLSERVER_PASSWORD || '',
+      encrypt:  env.NEXUS_DB_SQLSERVER_ENCRYPT !== 'false',
+    };
+  }
+  if (env.NEXUS_DB_MONGODB_URI) {
+    database.mongodb = {
+      uri: env.NEXUS_DB_MONGODB_URI,
+      ...(env.NEXUS_DB_MONGODB_USER     && { user:     env.NEXUS_DB_MONGODB_USER }),
+      ...(env.NEXUS_DB_MONGODB_PASSWORD && { password: env.NEXUS_DB_MONGODB_PASSWORD }),
+      auth_source: 'admin',
+      ssl: false,
+    };
+  }
+  if (Object.keys(database).length) tools.database = database;
+
+  // ---- System ----
+  const system: any = {};
+  if (env.NEXUS_SYSTEM_ENABLED !== undefined)            system.enabled              = bool(env.NEXUS_SYSTEM_ENABLED);
+  if (env.NEXUS_SYSTEM_ALLOW_SHELL_COMMANDS !== undefined) system.allow_shell_commands = bool(env.NEXUS_SYSTEM_ALLOW_SHELL_COMMANDS);
+  if (env.NEXUS_SYSTEM_MAX_EXECUTION_TIME)               system.max_execution_time   = int(env.NEXUS_SYSTEM_MAX_EXECUTION_TIME);
+  if (env.NEXUS_SYSTEM_ALLOWED_COMMANDS)                 system.allowed_commands     = arr(env.NEXUS_SYSTEM_ALLOWED_COMMANDS);
+  if (env.NEXUS_SYSTEM_DENIED_COMMANDS)                  system.denied_commands      = arr(env.NEXUS_SYSTEM_DENIED_COMMANDS);
+  if (Object.keys(system).length) tools.system = system;
+
+  // ---- AI ----
+  const ai: any = {};
+  if (env.NEXUS_AI_ENABLED !== undefined)  ai.enabled          = bool(env.NEXUS_AI_ENABLED);
+  if (env.NEXUS_AI_DEFAULT_PROVIDER)       ai.default_provider = env.NEXUS_AI_DEFAULT_PROVIDER;
+  if (env.NEXUS_AI_MAX_TOKENS)             ai.max_tokens       = int(env.NEXUS_AI_MAX_TOKENS);
+  if (env.NEXUS_AI_TEMPERATURE)            ai.temperature      = flt(env.NEXUS_AI_TEMPERATURE);
+  if (env.NEXUS_AI_STREAM !== undefined)   ai.stream           = bool(env.NEXUS_AI_STREAM);
+  if (env.ANTHROPIC_API_KEY || env.NEXUS_AI_ANTHROPIC_MODEL) {
+    ai.anthropic = {
+      ...(env.ANTHROPIC_API_KEY             && { api_key:     env.ANTHROPIC_API_KEY }),
+      ...(env.NEXUS_AI_ANTHROPIC_MODEL      && { model:       env.NEXUS_AI_ANTHROPIC_MODEL }),
+      ...(env.NEXUS_AI_ANTHROPIC_MAX_TOKENS && { max_tokens:  int(env.NEXUS_AI_ANTHROPIC_MAX_TOKENS) }),
+      ...(env.NEXUS_AI_ANTHROPIC_TEMPERATURE && { temperature: flt(env.NEXUS_AI_ANTHROPIC_TEMPERATURE) }),
+    };
+  }
+  if (env.OPENAI_API_KEY || env.NEXUS_AI_OPENAI_MODEL) {
+    ai.openai = {
+      ...(env.OPENAI_API_KEY             && { api_key:     env.OPENAI_API_KEY }),
+      ...(env.NEXUS_AI_OPENAI_MODEL      && { model:       env.NEXUS_AI_OPENAI_MODEL }),
+      ...(env.NEXUS_AI_OPENAI_MAX_TOKENS && { max_tokens:  int(env.NEXUS_AI_OPENAI_MAX_TOKENS) }),
+      ...(env.NEXUS_AI_OPENAI_TEMPERATURE && { temperature: flt(env.NEXUS_AI_OPENAI_TEMPERATURE) }),
+    };
+  }
+  if (Object.keys(ai).length) tools.ai = ai;
+
+  // ---- Utilities ----
+  if (env.NEXUS_UTILITIES_ENABLED !== undefined) tools.utilities = { enabled: bool(env.NEXUS_UTILITIES_ENABLED) };
+
+  if (Object.keys(tools).length) result.tools = tools;
+
+  // ---- Security ----
+  const security: any = {};
+  if (env.NEXUS_SECURITY_ENABLE_RATE_LIMITING !== undefined) security.enable_rate_limiting = bool(env.NEXUS_SECURITY_ENABLE_RATE_LIMITING);
+  if (env.NEXUS_SECURITY_RATE_LIMIT_REQUESTS)  security.rate_limit_requests  = int(env.NEXUS_SECURITY_RATE_LIMIT_REQUESTS);
+  if (env.NEXUS_SECURITY_RATE_LIMIT_WINDOW)    security.rate_limit_window     = int(env.NEXUS_SECURITY_RATE_LIMIT_WINDOW);
+  if (env.NEXUS_SECURITY_ENABLE_AUDIT_LOG !== undefined) security.enable_audit_log = bool(env.NEXUS_SECURITY_ENABLE_AUDIT_LOG);
+  if (env.NEXUS_SECURITY_AUDIT_LOG_PATH)       security.audit_log_path        = env.NEXUS_SECURITY_AUDIT_LOG_PATH;
+  if (Object.keys(security).length) result.security = security;
+
+  // ---- Performance ----
+  const performance: any = {};
+  if (env.NEXUS_PERFORMANCE_CACHE_ENABLED !== undefined) performance.cache_enabled       = bool(env.NEXUS_PERFORMANCE_CACHE_ENABLED);
+  if (env.NEXUS_PERFORMANCE_CACHE_TTL)                   performance.cache_ttl           = int(env.NEXUS_PERFORMANCE_CACHE_TTL);
+  if (env.NEXUS_PERFORMANCE_CACHE_MAX_SIZE)              performance.cache_max_size      = int(env.NEXUS_PERFORMANCE_CACHE_MAX_SIZE);
+  if (env.NEXUS_PERFORMANCE_CONCURRENT_REQUESTS)         performance.concurrent_requests = int(env.NEXUS_PERFORMANCE_CONCURRENT_REQUESTS);
+  if (Object.keys(performance).length) result.performance = performance;
+
+  return result as Partial<NexusConfig>;
 }
 
 /**
@@ -443,21 +603,34 @@ function loadYamlConfig(configPath: string): Partial<NexusConfig> | null {
 }
 
 /**
- * Deep merge configuration objects
+ * Deep merge configuration objects.
+ * Arrays from source replace target arrays (standard config override semantics).
+ * Prefix the first element with '+' to append instead: ['+', 'extra1', 'extra2'].
  */
 function deepMerge<T>(target: T, source: Partial<T>): T {
   const result = { ...target };
-  
+
   for (const key in source) {
     if (source[key] !== undefined) {
-      if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+      if (Array.isArray(source[key]) && Array.isArray(result[key])) {
+        const sourceArr = source[key] as unknown as unknown[];
+        if (sourceArr.length > 0 && sourceArr[0] === '+') {
+          result[key] = [...(result[key] as unknown as unknown[]), ...sourceArr.slice(1)] as any;
+        } else {
+          result[key] = source[key] as any;
+        }
+      } else if (
+        typeof source[key] === 'object' &&
+        source[key] !== null &&
+        !Array.isArray(source[key])
+      ) {
         result[key] = deepMerge(result[key] as any, source[key] as any);
       } else {
         result[key] = source[key] as any;
       }
     }
   }
-  
+
   return result;
 }
 

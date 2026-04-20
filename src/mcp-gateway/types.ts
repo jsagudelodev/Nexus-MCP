@@ -26,11 +26,17 @@ export interface MCPCallToolResult {
   isError?: boolean;
 }
 
+export interface IDisconnectable {
+  disconnect(): Promise<void>;
+  isConnected(): boolean;
+}
+
 export interface MCPServerConnection {
   config: MCPServerConfig;
   tools: Map<string, MCPTool>;
   connected: boolean;
   lastConnected?: Date;
+  client?: IDisconnectable;
 }
 
 export interface MCPClientOptions {

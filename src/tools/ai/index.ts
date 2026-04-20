@@ -88,15 +88,23 @@ function getAnthropicClient(): Anthropic {
 // Schemas
 // ============================================================================
 
+const ChatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']).describe('Message role'),
+  content: z.string().describe('Message content')
+});
+
 const OllamaChatSchema = z.object({
-  prompt: z.string().describe('The prompt to send to the model'),
-  model: z.string().default('llama2').describe('Ollama model name (e.g., llama2, mistral, codellama)'),
+  prompt: z.string().optional().describe('The prompt to send to the model (ignored when messages is provided)'),
+  messages: z.array(ChatMessageSchema).optional().describe('Conversation history for multi-turn chat'),
+  model: z.string().default('llama3.2').describe('Ollama model name (e.g., llama3.2, mistral, codellama)'),
   stream: z.boolean().default(false).describe('Whether to stream the response'),
   options: z.object({
     temperature: z.number().min(0).max(1).default(0.7).optional(),
     top_p: z.number().min(0).max(1).default(0.9).optional(),
     num_predict: z.number().int().positive().default(128).optional(),
   }).optional().describe('Generation options')
+}).refine(data => data.prompt || (data.messages && data.messages.length > 0), {
+  message: 'Either prompt or messages must be provided'
 });
 
 const OllamaListModelsSchema = z.object({
@@ -104,31 +112,40 @@ const OllamaListModelsSchema = z.object({
 });
 
 const GeminiChatSchema = z.object({
-  prompt: z.string().describe('The prompt to send to the model'),
-  model: z.string().default('gemini-pro').describe('Gemini model name (e.g., gemini-pro, gemini-pro-vision)'),
+  prompt: z.string().optional().describe('The prompt to send to the model (ignored when messages is provided)'),
+  messages: z.array(ChatMessageSchema).optional().describe('Conversation history for multi-turn chat'),
+  model: z.string().default('gemini-1.5-flash').describe('Gemini model name (e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-2.0-flash)'),
   temperature: z.number().min(0).max(2).default(0.7).describe('Temperature for generation'),
   topP: z.number().min(0).max(1).default(0.9).describe('Top P for generation'),
   maxOutputTokens: z.number().int().positive().default(1024).describe('Maximum output tokens')
+}).refine(data => data.prompt || (data.messages && data.messages.length > 0), {
+  message: 'Either prompt or messages must be provided'
 });
 
 const GeminiListModelsSchema = z.object({});
 
 const OpenAIChatSchema = z.object({
-  prompt: z.string().describe('The prompt to send to the model'),
-  model: z.string().default('gpt-3.5-turbo').describe('OpenAI model name (e.g., gpt-3.5-turbo, gpt-4)'),
+  prompt: z.string().optional().describe('The prompt to send to the model (ignored when messages is provided)'),
+  messages: z.array(ChatMessageSchema).optional().describe('Conversation history for multi-turn chat'),
+  model: z.string().default('gpt-4o-mini').describe('OpenAI model name (e.g., gpt-4o-mini, gpt-4o, gpt-4-turbo)'),
   temperature: z.number().min(0).max(2).default(0.7).describe('Temperature for generation'),
   maxTokens: z.number().int().positive().default(1024).describe('Maximum tokens to generate'),
   stream: z.boolean().default(false).describe('Whether to stream the response')
+}).refine(data => data.prompt || (data.messages && data.messages.length > 0), {
+  message: 'Either prompt or messages must be provided'
 });
 
 const OpenAIListModelsSchema = z.object({});
 
 const AnthropicChatSchema = z.object({
-  prompt: z.string().describe('The prompt to send to the model'),
-  model: z.string().default('claude-3-haiku-20240307').describe('Anthropic model name (e.g., claude-3-haiku, claude-3-sonnet, claude-3-opus)'),
+  prompt: z.string().optional().describe('The prompt to send to the model (ignored when messages is provided)'),
+  messages: z.array(ChatMessageSchema).optional().describe('Conversation history for multi-turn chat'),
+  model: z.string().default('claude-3-5-haiku-20241022').describe('Anthropic model name (e.g., claude-3-5-haiku-20241022, claude-3-5-sonnet-20241022, claude-3-7-sonnet-20250219)'),
   temperature: z.number().min(0).max(1).default(0.7).describe('Temperature for generation'),
   maxTokens: z.number().int().positive().default(1024).describe('Maximum tokens to generate'),
   stream: z.boolean().default(false).describe('Whether to stream the response')
+}).refine(data => data.prompt || (data.messages && data.messages.length > 0), {
+  message: 'Either prompt or messages must be provided'
 });
 
 const AnthropicListModelsSchema = z.object({});
@@ -143,15 +160,17 @@ const AnthropicListModelsSchema = z.object({});
 async function nexusOllamaChat(args: unknown): Promise<ToolResult> {
   try {
     const parsed = OllamaChatSchema.parse(args);
-    logger.info('Ollama chat request', { model: parsed.model, prompt: parsed.prompt.substring(0, 50) });
+    logger.info('Ollama chat request', { model: parsed.model });
 
     const ollama = getOllamaClient();
-    
+    const messages = parsed.messages
+      ? parsed.messages.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }))
+      : [{ role: 'user' as const, content: parsed.prompt! }];
+
     if (parsed.stream) {
-      // Streaming response
       const response = await ollama.chat({
         model: parsed.model,
-        messages: [{ role: 'user', content: parsed.prompt }],
+        messages,
         stream: true,
         options: parsed.options
       });
@@ -163,18 +182,12 @@ async function nexusOllamaChat(args: unknown): Promise<ToolResult> {
 
       return {
         success: true,
-        data: {
-          response: fullResponse,
-          model: parsed.model,
-          provider: 'ollama',
-          streamed: true
-        }
+        data: { response: fullResponse, model: parsed.model, provider: 'ollama', streamed: true }
       };
     } else {
-      // Non-streaming response
       const response = await ollama.chat({
         model: parsed.model,
-        messages: [{ role: 'user', content: parsed.prompt }],
+        messages,
         stream: false,
         options: parsed.options
       });
@@ -193,10 +206,7 @@ async function nexusOllamaChat(args: unknown): Promise<ToolResult> {
   } catch (error) {
     const handlingResult = handleError(error as Error);
     logger.error('Ollama chat error', { error: handlingResult.error?.message });
-    return {
-      success: false,
-      error: handlingResult.error
-    };
+    return { success: false, error: handlingResult.error };
   }
 }
 
@@ -250,10 +260,10 @@ async function nexusOllamaListModels(args: unknown): Promise<ToolResult> {
 async function nexusGeminiChat(args: unknown): Promise<ToolResult> {
   try {
     const parsed = GeminiChatSchema.parse(args);
-    logger.info('Gemini chat request', { model: parsed.model, prompt: parsed.prompt.substring(0, 50) });
+    logger.info('Gemini chat request', { model: parsed.model });
 
     const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ 
+    const genModel = genAI.getGenerativeModel({
       model: parsed.model,
       generationConfig: {
         temperature: parsed.temperature,
@@ -262,27 +272,40 @@ async function nexusGeminiChat(args: unknown): Promise<ToolResult> {
       }
     });
 
-    const result = await model.generateContent(parsed.prompt);
-    const response = await result.response;
-    const text = response.text();
+    let text: string;
+    let finishReason: any;
+    let safetyRatings: any;
+
+    if (parsed.messages && parsed.messages.length > 1) {
+      // Multi-turn: use chat session
+      const history = parsed.messages.slice(0, -1).map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+      const lastMessage = parsed.messages[parsed.messages.length - 1]!;
+      const chat = genModel.startChat({ history });
+      const result = await chat.sendMessage(lastMessage.content);
+      const response = await result.response;
+      text = response.text();
+      finishReason = response.candidates?.[0]?.finishReason;
+      safetyRatings = response.candidates?.[0]?.safetyRatings;
+    } else {
+      const prompt = parsed.messages?.[0]?.content ?? parsed.prompt!;
+      const result = await genModel.generateContent(prompt);
+      const response = await result.response;
+      text = response.text();
+      finishReason = response.candidates?.[0]?.finishReason;
+      safetyRatings = response.candidates?.[0]?.safetyRatings;
+    }
 
     return {
       success: true,
-      data: {
-        response: text,
-        model: parsed.model,
-        provider: 'gemini',
-        finishReason: result.response.candidates?.[0]?.finishReason,
-        safetyRatings: result.response.candidates?.[0]?.safetyRatings
-      }
+      data: { response: text, model: parsed.model, provider: 'gemini', finishReason, safetyRatings }
     };
   } catch (error) {
     const handlingResult = handleError(error as Error);
     logger.error('Gemini chat error', { error: handlingResult.error?.message });
-    return {
-      success: false,
-      error: handlingResult.error
-    };
+    return { success: false, error: handlingResult.error };
   }
 }
 
@@ -293,11 +316,12 @@ async function nexusGeminiListModels(_args: unknown): Promise<ToolResult> {
   try {
     logger.info('Gemini list models request');
 
-    // Gemini doesn't have a listModels method, return static list
+    // Gemini doesn't have a public listModels method, return current model list
     const models = [
-      { name: 'gemini-pro', displayName: 'Gemini Pro', description: 'General purpose model' },
-      { name: 'gemini-pro-vision', displayName: 'Gemini Pro Vision', description: 'Multimodal model' },
-      { name: 'gemini-1.5-pro', displayName: 'Gemini 1.5 Pro', description: 'Latest Gemini model' }
+      { name: 'gemini-2.0-flash',     displayName: 'Gemini 2.0 Flash',    description: 'Latest fast multimodal model' },
+      { name: 'gemini-1.5-flash',     displayName: 'Gemini 1.5 Flash',    description: 'Fast and versatile model' },
+      { name: 'gemini-1.5-pro',       displayName: 'Gemini 1.5 Pro',      description: 'Complex reasoning model' },
+      { name: 'gemini-1.5-flash-8b',  displayName: 'Gemini 1.5 Flash 8B', description: 'Lightweight model for high-volume tasks' }
     ];
 
     return {
@@ -323,15 +347,17 @@ async function nexusGeminiListModels(_args: unknown): Promise<ToolResult> {
 async function nexusOpenAIChat(args: unknown): Promise<ToolResult> {
   try {
     const parsed = OpenAIChatSchema.parse(args);
-    logger.info('OpenAI chat request', { model: parsed.model, prompt: parsed.prompt.substring(0, 50) });
+    logger.info('OpenAI chat request', { model: parsed.model });
 
     const openai = getOpenAIClient();
-    
+    const messages = parsed.messages
+      ? parsed.messages.map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }))
+      : [{ role: 'user' as const, content: parsed.prompt! }];
+
     if (parsed.stream) {
-      // Streaming response
       const response = await openai.chat.completions.create({
         model: parsed.model,
-        messages: [{ role: 'user', content: parsed.prompt }],
+        messages,
         temperature: parsed.temperature,
         max_completion_tokens: parsed.maxTokens,
         stream: true
@@ -339,24 +365,17 @@ async function nexusOpenAIChat(args: unknown): Promise<ToolResult> {
 
       let fullResponse = '';
       for await (const chunk of response) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        fullResponse += content;
+        fullResponse += chunk.choices[0]?.delta?.content || '';
       }
 
       return {
         success: true,
-        data: {
-          response: fullResponse,
-          model: parsed.model,
-          provider: 'openai',
-          streamed: true
-        }
+        data: { response: fullResponse, model: parsed.model, provider: 'openai', streamed: true }
       };
     } else {
-      // Non-streaming response
       const response = await openai.chat.completions.create({
         model: parsed.model,
-        messages: [{ role: 'user', content: parsed.prompt }],
+        messages,
         temperature: parsed.temperature,
         max_completion_tokens: parsed.maxTokens,
         stream: false
@@ -377,10 +396,7 @@ async function nexusOpenAIChat(args: unknown): Promise<ToolResult> {
   } catch (error) {
     const handlingResult = handleError(error as Error);
     logger.error('OpenAI chat error', { error: handlingResult.error?.message });
-    return {
-      success: false,
-      error: handlingResult.error
-    };
+    return { success: false, error: handlingResult.error };
   }
 }
 
@@ -421,15 +437,21 @@ async function nexusOpenAIListModels(_args: unknown): Promise<ToolResult> {
 async function nexusAnthropicChat(args: unknown): Promise<ToolResult> {
   try {
     const parsed = AnthropicChatSchema.parse(args);
-    logger.info('Anthropic chat request', { model: parsed.model, prompt: parsed.prompt.substring(0, 50) });
+    logger.info('Anthropic chat request', { model: parsed.model });
 
     const anthropic = getAnthropicClient();
-    
+    const messages = parsed.messages
+      ? parsed.messages
+          .filter(m => m.role !== 'system')
+          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      : [{ role: 'user' as const, content: parsed.prompt! }];
+    const systemMessage = parsed.messages?.find(m => m.role === 'system')?.content;
+
     if (parsed.stream) {
-      // Streaming response
       const response = await anthropic.messages.create({
         model: parsed.model,
-        messages: [{ role: 'user', content: parsed.prompt }],
+        messages,
+        ...(systemMessage && { system: systemMessage }),
         temperature: parsed.temperature,
         max_tokens: parsed.maxTokens,
         stream: true
@@ -437,25 +459,20 @@ async function nexusAnthropicChat(args: unknown): Promise<ToolResult> {
 
       let fullResponse = '';
       for await (const chunk of response) {
-        if (chunk.type === 'content_block_delta') {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
           fullResponse += chunk.delta.text;
         }
       }
 
       return {
         success: true,
-        data: {
-          response: fullResponse,
-          model: parsed.model,
-          provider: 'anthropic',
-          streamed: true
-        }
+        data: { response: fullResponse, model: parsed.model, provider: 'anthropic', streamed: true }
       };
     } else {
-      // Non-streaming response
       const response = await anthropic.messages.create({
         model: parsed.model,
-        messages: [{ role: 'user', content: parsed.prompt }],
+        messages,
+        ...(systemMessage && { system: systemMessage }),
         temperature: parsed.temperature,
         max_tokens: parsed.maxTokens,
         stream: false
@@ -475,10 +492,7 @@ async function nexusAnthropicChat(args: unknown): Promise<ToolResult> {
   } catch (error) {
     const handlingResult = handleError(error as Error);
     logger.error('Anthropic chat error', { error: handlingResult.error?.message });
-    return {
-      success: false,
-      error: handlingResult.error
-    };
+    return { success: false, error: handlingResult.error };
   }
 }
 
@@ -489,11 +503,12 @@ async function nexusAnthropicListModels(_args: unknown): Promise<ToolResult> {
   try {
     logger.info('Anthropic list models request');
 
-    // Anthropic doesn't have a listModels method, return static list
+    // Anthropic doesn't have a public listModels method, return current model list
     const models = [
-      { name: 'claude-3-haiku-20240307', displayName: 'Claude 3 Haiku', description: 'Fast and efficient model' },
-      { name: 'claude-3-sonnet-20240229', displayName: 'Claude 3 Sonnet', description: 'Balanced performance model' },
-      { name: 'claude-3-opus-20240229', displayName: 'Claude 3 Opus', description: 'Most capable model' }
+      { name: 'claude-3-7-sonnet-20250219', displayName: 'Claude 3.7 Sonnet',   description: 'Most intelligent model with extended thinking' },
+      { name: 'claude-3-5-sonnet-20241022', displayName: 'Claude 3.5 Sonnet',   description: 'High intelligence, fast response' },
+      { name: 'claude-3-5-haiku-20241022',  displayName: 'Claude 3.5 Haiku',    description: 'Fastest and most compact model' },
+      { name: 'claude-3-opus-20240229',     displayName: 'Claude 3 Opus',        description: 'Powerful model for complex tasks (legacy)' }
     ];
 
     return {
