@@ -129,10 +129,16 @@ export class MCPGatewayRouter {
       const duration = Date.now() - start;
       logger.debug(`Tool call completed`, { server: serverName, tool: toolName, duration });
 
+      // Extract error message from result if isError is true
+      const errorMessage = result.isError
+        ? result.content?.find((c: any) => c.type === 'text')?.text || 'Tool execution failed'
+        : undefined;
+
       return {
         serverName,
         result,
         success: !result.isError,
+        error: errorMessage,
         duration,
       };
     } catch (error) {

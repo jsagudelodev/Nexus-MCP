@@ -109,6 +109,39 @@ tools:
     temperature: 0.7
 ```
 
+### **3. Configuración del MCP Gateway**
+
+El MCP Gateway permite conectar servidores MCP externos para usar sus herramientas junto con las herramientas integradas.
+
+Crea o edita `mcp-gateway.config.json`:
+
+```json
+{
+  "servers": [
+    {
+      "name": "google-news",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["node_modules/@chanmeng666/google-news-server/dist/index.js"],
+      "env": {
+        "SERP_API_KEY": "${env:SERP_API_KEY}"
+      }
+    }
+  ],
+  "defaultTimeout": 30000,
+  "enableDiscovery": true
+}
+```
+
+**Opciones de configuración:**
+- `name`: Identificador único del servidor
+- `transport`: Tipo de conexión (`stdio` o `sse`)
+- `command`: Comando para iniciar el servidor
+- `args`: Argumentos del comando
+- `env`: Variables de entorno del servidor
+
+Para más detalles, consulta la [Guía de Configuración MCP](./mcp-configuration-guide.md).
+
 ---
 
 ## 🎮 **Uso Básico**

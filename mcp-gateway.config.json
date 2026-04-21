@@ -1,4 +1,5 @@
 {
+  "enabled": false,
   "servers": [
     {
       "name": "google-news",
@@ -6,7 +7,7 @@
       "command": "node",
       "args": ["node_modules/@chanmeng666/google-news-server/dist/index.js"],
       "env": {
-        "SERP_API_KEY": ""
+        "SERP_API_KEY": "955a9abd0cd30fefe73473c9fe607b503c8a1c5bfa775638337badf38731b93e"
       }
     }
   ],

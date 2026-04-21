@@ -10,6 +10,7 @@ import { logger } from '../logger.js';
 import type { MCPServerConfig } from './types.js';
 
 export interface MCPGatewayConfig {
+  enabled?: boolean;
   servers: MCPServerConfig[];
   defaultTimeout?: number;
   enableDiscovery?: boolean;
@@ -127,5 +128,12 @@ export class MCPGatewayConfigManager {
    */
   isDiscoveryEnabled(): boolean {
     return this.config.enableDiscovery !== false;
+  }
+
+  /**
+   * Check if MCP Gateway is enabled
+   */
+  isEnabled(): boolean {
+    return this.config.enabled !== false;
   }
 }

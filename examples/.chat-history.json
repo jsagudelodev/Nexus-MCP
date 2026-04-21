@@ -376,9 +376,141 @@
       "timestamp": "2026-04-20T02:00:06.231Z",
       "provider": "openai",
       "tokens": 1041
+    },
+    {
+      "role": "user",
+      "content": "/agente",
+      "timestamp": "2026-04-20T23:50:32.706Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Un agente es una persona o entidad que actúa en nombre de otra persona o entidad, con la autoridad de hacerlo. Los agentes pueden ser empleados por individuos o empresas para realizar tareas o tomar decisiones en su nombre. Por ejemplo, un agente de bienes raíces actúa en nombre de un comprador o vendedor de propiedad. En el campo de la inteligencia artificial, un agente puede ser un programa de software que realiza tareas o toma decisiones en base a algoritmos o datos.",
+      "timestamp": "2026-04-20T23:50:36.296Z",
+      "provider": "openai",
+      "tokens": 122
+    },
+    {
+      "role": "user",
+      "content": "agent",
+      "timestamp": "2026-04-20T23:56:38.723Z"
+    },
+    {
+      "role": "assistant",
+      "content": "An agent refers to an individual or entity that acts on behalf of another individual or entity. This can be in various contexts such as a real estate agent who represents a buyer or seller in property transactions, a customer service agent who assists customers on behalf of a company, a literary agent who represents authors in publishing negotiations, or a software agent that performs tasks in a network on behalf of a user. The key aspect is that an agent acts as a representative or intermediary, often with some degree of authority or power to make decisions.",
+      "timestamp": "2026-04-20T23:56:42.621Z",
+      "provider": "openai",
+      "tokens": 113
+    },
+    {
+      "role": "user",
+      "content": "que noticias tienes de la ia hoy?",
+      "timestamp": "2026-04-20T23:57:05.472Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lamento la confusión, pero como asistente de inteligencia artificial, no tengo la capacidad de proporcionar noticias en tiempo real o actualizaciones diarias. Mi función principal es proporcionar información y responder preguntas basadas en los datos con los que fui entrenado. Sin embargo, la inteligencia artificial es un campo en constante evolución con nuevas investigaciones y desarrollos que ocurren regularmente. Te recomendaría verificar fuentes de noticias confiables o sitios web especializados en tecnología para obtener las noticias más recientes sobre inteligencia artificial.",
+      "timestamp": "2026-04-20T23:57:10.268Z",
+      "provider": "openai",
+      "tokens": 266
+    },
+    {
+      "role": "user",
+      "content": "que noticias tienes hoy de ia?",
+      "timestamp": "2026-04-21T00:02:23.360Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, en este momento no puedo obtener las noticias más recientes sobre la inteligencia artificial. Te aconsejaría que busques en un sitio de noticias confiable para obtener las actualizaciones más recientes.",
+      "timestamp": "2026-04-21T00:02:28.576Z",
+      "provider": "openai",
+      "tokens": 603
+    },
+    {
+      "role": "user",
+      "content": "cual es la noticia de ia hoy?",
+      "timestamp": "2026-04-21T00:04:55.288Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, no puedo obtener las últimas noticias en este momento. Te recomiendo que consultes un sitio de noticias de confianza para obtener la información más reciente sobre inteligencia artificial.",
+      "timestamp": "2026-04-21T00:04:59.703Z",
+      "provider": "openai",
+      "tokens": 603
+    },
+    {
+      "role": "user",
+      "content": "que hora es",
+      "timestamp": "2026-04-21T00:07:54.561Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Son las 00:07 (12:07 a.m.) del 21 de abril, 2026, en la zona horaria de Bogotá, América.",
+      "timestamp": "2026-04-21T00:07:59.857Z",
+      "provider": "openai",
+      "tokens": 596
+    },
+    {
+      "role": "user",
+      "content": "que noticias tienes de ia",
+      "timestamp": "2026-04-21T00:15:17.459Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, parece que hay un problema con la herramienta de búsqueda de noticias. No puedo presentarte las noticias más recientes sobre la inteligencia artificial en este momento. Por favor, inténtalo de nuevo más tarde o busca en línea directamente.",
+      "timestamp": "2026-04-21T00:15:22.495Z",
+      "provider": "openai",
+      "tokens": 709
+    },
+    {
+      "role": "user",
+      "content": "¿Cuáles son las últimas noticias de inteligencia artificial?",
+      "timestamp": "2026-04-21T00:31:49.955Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lamento decir que actualmente estoy experimentando dificultades para buscar las últimas noticias sobre la inteligencia artificial. Te recomendaría que busques las últimas noticias de IA en Google News o en tu fuente de noticias de tecnología favorita para obtener la información más actual y relevante. ¿Puedo ayudarte con algo más?",
+      "timestamp": "2026-04-21T00:31:55.861Z",
+      "provider": "openai",
+      "tokens": 654
+    },
+    {
+      "role": "user",
+      "content": "noticias de inteligencia artificial",
+      "timestamp": "2026-04-21T00:35:12.022Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, parece que hay un problema con la herramienta de búsqueda de noticias en este momento. Sin embargo, puedes buscar directamente en internet para obtener las últimas noticias sobre la inteligencia artificial. Algunos buenos sitios web para noticias de tecnología incluyen TechCrunch, Wired y The Verge.",
+      "timestamp": "2026-04-21T00:35:17.880Z",
+      "provider": "openai",
+      "tokens": 632
+    },
+    {
+      "role": "user",
+      "content": "que noticias tienes de  ia hoy?",
+      "timestamp": "2026-04-21T00:37:07.802Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, parece que hay un problema técnico con la búsqueda de noticias actualmente. Como alternativa, recomiendo visitar algunos recursos de noticias comunes en línea como Google News, CNN, BBC, etc., y buscar \"inteligencia artificial\" para obtener las últimas noticias.",
+      "timestamp": "2026-04-21T00:37:12.162Z",
+      "provider": "openai",
+      "tokens": 652
+    },
+    {
+      "role": "user",
+      "content": "que noticias tienes de  ia hoy?",
+      "timestamp": "2026-04-21T00:39:12.088Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Lo siento, pero parece que hay un problema técnico para obtener las últimas noticias sobre inteligencia artificial en este momento. Como asistente digital, mi capacidad para proporcionar actualizaciones en tiempo real puede estar limitada. Para obtener las noticias más actualizadas sobre la inteligencia artificial, te recomiendo que consultes los respetados medios de comunicación en línea. Algunos de ellos incluyen CNN, BBC, o sitios web de noticias específicas de tecnología como TechCrunch, Wired o The Verge.",
+      "timestamp": "2026-04-21T00:39:19.171Z",
+      "provider": "openai",
+      "tokens": 855
     }
   ],
-  "totalTokens": 14646,
-  "messageCount": 31,
-  "lastUpdated": "2026-04-20T02:00:06.231Z"
+  "totalTokens": 20451,
+  "messageCount": 42,
+  "lastUpdated": "2026-04-21T00:39:19.171Z"
 }

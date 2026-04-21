@@ -98,6 +98,16 @@ async function runAgentTurn(model, sessionMessages, userInput) {
     { role: 'user', content: userInput },
   ];
 
+  // Debug: Log tool names to check for invalid characters
+  console.log(`\n${c.dim}🔍 Tools enviadas a OpenAI (${openaiToolDefs.length}):${c.reset}`);
+  openaiToolDefs.forEach((t, i) => {
+    const name = t.function.name;
+    const isValid = /^[a-zA-Z0-9_-]+$/.test(name);
+    const status = isValid ? c.green : c.red;
+    console.log(`  ${c.dim}[${i}]${c.reset} ${status}${name}${c.reset} ${isValid ? '✓' : '✗'}`);
+  });
+  console.log();
+
   const first = await openai.chat.completions.create({
     model, messages, tools: openaiToolDefs, tool_choice: 'auto',
   });
@@ -341,6 +351,14 @@ const c = {
 (async () => {
   try {
     mcpConfigManager = new MCPGatewayConfigManager();
+
+    // Check if MCP Gateway is enabled
+    if (!mcpConfigManager.isEnabled()) {
+      console.log(`  ${c.dim}○ MCP Gateway desactivado en configuración${c.reset}`);
+      mcpGatewayEnabled = false;
+      return;
+    }
+
     mcpRegistry = new MCPGatewayRegistry({ debug: false });
     mcpDiscovery = new MCPGatewayDiscovery({ autoRefresh: false });
     mcpRouter = new MCPGatewayRouter(mcpRegistry);
@@ -351,6 +369,16 @@ const c = {
     if (servers.length > 0) {
       console.log(`  ${c.cyan}○ Cargando ${servers.length} servidores MCP externos...${c.reset}`);
       for (const serverConfig of servers) {
+        // Check if required env vars are set
+        const missingEnvVars = Object.entries(serverConfig.env || {})
+          .filter(([key, value]) => !value || value === '' || value === '${env:SERP_API_KEY}')
+          .map(([key]) => key);
+
+        if (missingEnvVars.length > 0) {
+          console.log(`  ${c.yellow}⚠${c.reset} Servidor '${serverConfig.name}' requiere variables de entorno: ${missingEnvVars.join(', ')}`);
+          console.log(`  ${c.dim}  El servidor se registrará pero las tools pueden fallar${c.reset}`);
+        }
+
         try {
           await mcpRegistry.registerServer(serverConfig);
           console.log(`  ${c.green}✓${c.reset} Servidor '${serverConfig.name}' registrado`);
@@ -365,32 +393,45 @@ const c = {
       console.log(`  ${c.cyan}○ ${externalRoutes.length} tools externos disponibles${c.reset}`);
 
       for (const route of externalRoutes) {
+        // Debug: Log route details
+        console.log(`  ${c.dim}  Route: server=${route.server}, tool=${route.tool}, qualifiedName=${route.qualifiedName}${c.reset}`);
+
+        // Use tool name directly (server already prefixes it in the tool name)
+        // Sanitize to match OpenAI pattern (replace : with _ if present)
+        const sanitizedName = route.tool.replace(/:/g, '_');
+
         const proxyTool = {
-          name: route.qualifiedName,
+          name: sanitizedName,
+          qualifiedName: route.qualifiedName, // Keep original for routing
           description: `External tool from ${route.server}: ${route.tool}`,
           inputSchema: z.object({}),
           category: 'external',
           version: '1.0.0',
           handler: async (args) => {
             try {
+              console.log(`  ${c.dim}  Calling ${route.qualifiedName} with args: ${JSON.stringify(args)}${c.reset}`);
               const result = await mcpRouter.routeToolCall(route.qualifiedName, args);
+              console.log(`  ${c.dim}  Result from ${route.qualifiedName}: success=${result.success}, error=${result.error}${c.reset}`);
               if (result.success) {
                 return { success: true, data: result.result };
               } else {
-                return { success: false, error: new Error(result.error || 'Tool execution failed') };
+                const errorMsg = result.error || 'Tool execution failed';
+                console.log(`  ${c.red}  ✗ Error from ${route.qualifiedName}: ${errorMsg}${c.reset}`);
+                return { success: false, error: new Error(errorMsg) };
               }
             } catch (error) {
+              console.log(`  ${c.red}  ✗ Exception in ${route.qualifiedName}: ${error.message}${c.reset}`);
               return { success: false, error: error };
             }
           }
         };
 
         AGENT_TOOL_LIST.push(proxyTool);
-        agentToolIndex[route.qualifiedName] = proxyTool;
+        agentToolIndex[sanitizedName] = proxyTool;
         openaiToolDefs.push({
           type: 'function',
           function: {
-            name: route.qualifiedName,
+            name: sanitizedName,
             description: proxyTool.description,
             parameters: { type: 'object', properties: {}, required: [] }
           }
@@ -398,7 +439,7 @@ const c = {
         ollamaToolDefs.push({
           type: 'function',
           function: {
-            name: route.qualifiedName,
+            name: sanitizedName,
             description: proxyTool.description,
             parameters: { type: 'object', properties: {}, required: [] }
           }
@@ -618,14 +659,21 @@ function showAgentStats() {
   }
 }
 
+function addToAgentHistory(tool) {
+  agentToolHistory.push({
+    ...tool,
+    timestamp: Date.now()
+  });
+}
+
 function showAgentHistory() {
   console.log(`\n${c.bright}  📜 Historial de Tools${c.reset}\n`);
-  
+
   if (agentToolHistory.length === 0) {
     console.log(`  ${c.dim}Sin tools ejecutados aún${c.reset}\n`);
     return;
   }
-  
+
   agentToolHistory.forEach((t, i) => {
     const categoryColor = {
       'utilities': c.green,
@@ -634,6 +682,7 @@ function showAgentHistory() {
       'http': c.magenta,
       'git': c.cyan,
       'ai': c.red,
+      'external': c.cyan,
       'unknown': c.white
     }[t.category] || c.white;
     const successIcon = t.success ? '✅' : '❌';

@@ -4,13 +4,14 @@ This guide explains how to configure AI assistants (Claude Code, ChatGPT, etc.) 
 
 ## Overview
 
-Nexus-MCP is an MCP server that exposes 57 tools across 7 categories:
+Nexus-MCP is an MCP server that exposes 72 tools across 7 categories:
 - **Filesystem** (18 tools): Read, write, list, search files
 - **HTTP** (16 tools): Make requests, scrape web, APIs
 - **Git** (15 tools): Clone, commit, branches, PRs
 - **System** (8 tools): Execute commands, manage processes
 - **AI** (8 tools): Chat with Ollama, Gemini, OpenAI, Anthropic
 - **Utilities** (8 tools): JSON, YAML, compression, encryption
+- **External** (8+ tools): Tools from external MCP servers via MCP Gateway
 
 ## Architecture
 
@@ -174,6 +175,118 @@ You can run multiple MCP servers simultaneously:
 }
 ```
 
+## MCP Gateway - External MCP Servers
+
+Nexus-MCP includes an MCP Gateway that allows you to connect external MCP servers and use their tools alongside the built-in tools.
+
+### Architecture with MCP Gateway
+
+```
+AI Assistant (Claude/ChatGPT)
+         ↓
+    MCP Protocol
+         ↓
+Nexus-MCP Server
+         ↓
+   MCP Gateway Router
+         ↓
+┌────────┴────────┐
+│   External     │   Built-in Tools
+│  MCP Servers   │
+└────────────────┘
+```
+
+### Configuring External MCP Servers
+
+1. **Create or edit `mcp-gateway.config.json`** in the Nexus-MCP root directory:
+
+```json
+{
+  "servers": [
+    {
+      "name": "google-news",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["node_modules/@chanmeng666/google-news-server/dist/index.js"],
+      "env": {
+        "SERP_API_KEY": "your-serp-api-key"
+      }
+    },
+    {
+      "name": "filesystem",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "D:\\Proyectos"],
+      "env": {}
+    }
+  ],
+  "defaultTimeout": 30000,
+  "enableDiscovery": true
+}
+```
+
+2. **Server Configuration Options:**
+
+- `name`: Unique identifier for the server
+- `transport`: Connection type (`stdio` or `sse`)
+- `command`: Command to start the server
+- `args`: Arguments for the command
+- `env`: Environment variables for the server
+
+3. **Using External Tools**
+
+External tools are automatically available when you start Nexus-MCP. They appear in the tool list with qualified names like `google-news:search`.
+
+### Example: Google News Integration
+
+**Install the server:**
+```bash
+npm install @chanmeng666/google-news-server
+```
+
+**Add to `mcp-gateway.config.json`:**
+```json
+{
+  "servers": [
+    {
+      "name": "google-news",
+      "transport": "stdio",
+      "command": "node",
+      "args": ["node_modules/@chanmeng666/google-news-server/dist/index.js"],
+      "env": {
+        "SERP_API_KEY": "${env:SERP_API_KEY}"
+      }
+    }
+  ]
+}
+```
+
+**Use in Claude:**
+```
+User: "Search for news about AI"
+Claude: Calls `google-news:search` and returns results
+```
+
+### Benefits of MCP Gateway
+
+- **Unified Interface**: Access all tools (built-in + external) through one MCP server
+- **Automatic Discovery**: External servers are loaded automatically on startup
+- **Routing**: Tool calls are routed to the correct server automatically
+- **Error Handling**: Robust error handling for external server connections
+- **Multiple Servers**: Support for multiple external MCP servers simultaneously
+
+### Troubleshooting MCP Gateway
+
+**Server not loading:**
+- Check that the server package is installed
+- Verify the command and args are correct
+- Check environment variables are set
+
+**Tool not available:**
+- Verify the server is registered successfully
+- Check the server logs for errors
+- Ensure the tool name is correct (use `server:tool` format)
+
 ## Tool Categories Reference
 
 ### Filesystem Tools (18)
@@ -260,6 +373,16 @@ You can run multiple MCP servers simultaneously:
 - `nexus_base64_decode` - Base64 decode
 - `nexus_hash_generate` - Generate hash
 - `nexus_uuid_generate` - Generate UUID
+
+### External Tools (8+)
+External tools are loaded from MCP servers configured in `mcp-gateway.config.json`. Tools appear with qualified names like `server:tool`.
+
+**Example External Tools:**
+- `google-news:search` - Search Google News
+- `filesystem:read_file` - Read file (from external filesystem server)
+- `brave-search:search` - Search using Brave Search
+
+The exact tools available depend on which external MCP servers you configure.
 
 ## Troubleshooting
 

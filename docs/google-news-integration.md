@@ -156,14 +156,44 @@ The Google News MCP Server provides the following tools:
 
 ## Integration with Agent Mode
 
-When using the agent mode in the CLI, you can ask the AI to search for news:
+The Google News MCP server is automatically integrated with the Nexus-MCP CLI agent mode. When you start the CLI, external MCP servers are loaded automatically:
+
+```bash
+node examples/ai-interactive-cli.js
+```
+
+You'll see output like:
+```
+✓ Servidor 'google-news' registrado
+○ 1 tools externos disponibles
+```
+
+Now you can ask the AI to search for news:
 
 ```
 /agent
 Search for the latest news about artificial intelligence
 ```
 
-The AI will automatically use the Google News tools if available.
+The AI will automatically use the `google-news:search` tool if available.
+
+### Using with Different AI Providers
+
+The integration works with all supported AI providers:
+- **OpenAI (GPT)**: Full function calling support
+- **Ollama (Local LLMs)**: Function calling support
+- **Gemini (Google AI)**: Function calling support
+- **Anthropic (Claude)**: Function calling support
+
+### Querying Active MCP Servers
+
+You can ask the AI which MCP servers are active:
+
+```
+What MCP servers are currently active?
+```
+
+The AI will respond with the configured external MCP servers, including Google News.
 
 ## Troubleshooting
 
