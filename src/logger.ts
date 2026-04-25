@@ -14,6 +14,7 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
+import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 // ============================================================================
@@ -322,6 +323,91 @@ export function createToolLogger(toolName: string): winston.Logger {
     tool: toolName,
     type: 'tool'
   });
+}
+
+// ============================================================================
+// Contextual Logger (Based on App Migración SOUL pattern)
+// ============================================================================
+
+/**
+ * Contextual logger for workflows with separate log files per context
+ * Useful for tracing end-to-end workflows (e.g., migrations, tasks)
+ */
+export class ContextualLogger {
+  private readonly _logPath: string;
+  private readonly _contextId: string;
+
+  private constructor(logPath: string, contextId: string) {
+    this._logPath = logPath;
+    this._contextId = contextId;
+  }
+
+  /**
+   * Create a contextual logger for a specific workflow/context
+   * Logs are written to a separate file per context
+   */
+  static create(workDir: string, contextId: string): ContextualLogger {
+    const ts = new Date().toISOString().replace(/:/g, '-').replace(/\.\d{3}Z$/, 'Z');
+    const safeTs = ts.replace(/Z$/, '').replace('T', 'T');
+    const dir = path.join(workDir, 'logs', contextId);
+
+    // Create directory if it doesn't exist
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        throw error;
+      }
+    }
+
+    const logPath = path.join(dir, `${safeTs}.log`);
+    const contextualLogger = new ContextualLogger(logPath, contextId);
+    contextualLogger.info('run.open', { contextId });
+    return contextualLogger;
+  }
+
+  get logPath(): string {
+    return this._logPath;
+  }
+
+  get contextId(): string {
+    return this._contextId;
+  }
+
+  /**
+   * Write a log entry to the context-specific file
+   */
+  log(level: 'INFO' | 'WARN' | 'ERROR', event: string, data?: Record<string, unknown>): void {
+    const ts = new Date().toISOString();
+    const dataStr = data && Object.keys(data).length > 0 ? ` | ${JSON.stringify(data)}` : '';
+    const line = `${ts}  ${level.padEnd(5)}  [${this._contextId.padEnd(12)}]  ${event.padEnd(24)}${dataStr}\n`;
+
+    try {
+      fs.appendFileSync(this._logPath, line, 'utf-8');
+    } catch {
+      // Never break the main flow
+    }
+  }
+
+  info(event: string, data?: Record<string, unknown>): void {
+    this.log('INFO', event, data);
+  }
+
+  warn(event: string, data?: Record<string, unknown>): void {
+    this.log('WARN', event, data);
+  }
+
+  error(event: string, data?: Record<string, unknown>): void {
+    this.log('ERROR', event, data);
+  }
+
+  /**
+   * Close the contextual logger (marks end of workflow)
+   */
+  close(): void {
+    this.info('run.close');
+  }
 }
 
 // ============================================================================

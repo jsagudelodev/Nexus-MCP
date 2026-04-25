@@ -143,11 +143,12 @@ const SystemConfigSchema = z.object({
 
 const AIConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  default_provider: z.enum(['anthropic', 'openai']).default('anthropic'),
+  default_provider: z.enum(['anthropic', 'openai', 'ollama']).default('anthropic'),
   max_tokens: z.number().default(4096),
   temperature: z.number().default(0.7),
   top_p: z.number().default(1.0),
   stream: z.boolean().default(false),
+  ollama_model: z.string().default('deepseek-coder:1.3b').optional(),
   anthropic: z.object({
     api_key: z.string().optional(),
     model: z.string().default('claude-3-sonnet-20240229'),
@@ -346,11 +347,12 @@ const defaultConfig: NexusConfig = {
     },
     ai: {
       enabled: true,
-      default_provider: 'anthropic',
+      default_provider: 'ollama',
       max_tokens: 4096,
       temperature: 0.7,
       top_p: 1.0,
       stream: false,
+      ollama_model: 'deepseek-coder:1.3b',
       anthropic: {
         model: 'claude-3-sonnet-20240229',
         max_tokens: 4096,
@@ -543,6 +545,7 @@ function loadEnvConfig(): Partial<NexusConfig> {
   if (env.NEXUS_AI_MAX_TOKENS)             ai.max_tokens       = int(env.NEXUS_AI_MAX_TOKENS);
   if (env.NEXUS_AI_TEMPERATURE)            ai.temperature      = flt(env.NEXUS_AI_TEMPERATURE);
   if (env.NEXUS_AI_STREAM !== undefined)   ai.stream           = bool(env.NEXUS_AI_STREAM);
+  if (env.OLLAMA_MODEL)                    ai.ollama_model     = env.OLLAMA_MODEL;
   if (env.ANTHROPIC_API_KEY || env.NEXUS_AI_ANTHROPIC_MODEL) {
     ai.anthropic = {
       ...(env.ANTHROPIC_API_KEY             && { api_key:     env.ANTHROPIC_API_KEY }),
@@ -587,11 +590,23 @@ function loadEnvConfig(): Partial<NexusConfig> {
 }
 
 /**
- * Load configuration from YAML file
+ * Load configuration from YAML file with environment variable substitution
+ * Supports ${VAR_NAME} syntax for environment variable substitution
  */
 function loadYamlConfig(configPath: string): Partial<NexusConfig> | null {
   try {
-    const yamlContent = fs.readFileSync(configPath, 'utf8');
+    let yamlContent = fs.readFileSync(configPath, 'utf8');
+
+    // Replace environment variables using ${VAR_NAME} syntax
+    yamlContent = yamlContent.replace(/\$\{([^}]+)\}/g, (_, varName) => {
+      const value = process.env[varName];
+      if (!value) {
+        console.warn(`Warning: Environment variable ${varName} is not set`);
+        return '';
+      }
+      return value;
+    });
+
     const yamlConfig = yaml.parse(yamlContent);
     return yamlConfig as Partial<NexusConfig>;
   } catch (error) {
@@ -635,26 +650,41 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 }
 
 /**
+ * Validates that required environment variables are set
+ * Based on App Migración SOUL pattern
+ */
+export function validateEnvironment(requiredVars: string[] = []): void {
+  const missing = requiredVars.filter((varName) => !process.env[varName]);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}\n` +
+        'Please set them before starting the MCP server.'
+    );
+  }
+}
+
+/**
  * Load and validate configuration
  */
 export function loadConfig(configPath?: string): NexusConfig {
   // 1. Start with defaults
   let mergedConfig = { ...defaultConfig };
-  
+
   // 2. Load YAML config
   const yamlPath = configPath || path.join(process.cwd(), 'config', 'config.yaml');
   const yamlConfig = loadYamlConfig(yamlPath);
   if (yamlConfig) {
     mergedConfig = deepMerge(mergedConfig, yamlConfig);
   }
-  
+
   // 3. Load environment config (highest priority)
   const envConfig = loadEnvConfig();
   mergedConfig = deepMerge(mergedConfig, envConfig);
-  
+
   // 4. Validate with Zod
   const validatedConfig = NexusConfigSchema.parse(mergedConfig);
-  
+
   config = validatedConfig;
   return validatedConfig;
 }

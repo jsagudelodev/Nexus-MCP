@@ -508,9 +508,93 @@
       "timestamp": "2026-04-21T00:39:19.171Z",
       "provider": "openai",
       "tokens": 855
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-21T02:04:21.340Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Hola! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2026-04-21T02:04:22.262Z",
+      "provider": "ollama",
+      "tokens": 0
+    },
+    {
+      "role": "user",
+      "content": "me llamo sebas",
+      "timestamp": "2026-04-21T02:04:28.364Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Hola, Sebas! ¿En qué puedo ayudarte hoy?",
+      "timestamp": "2026-04-21T02:04:30.701Z",
+      "provider": "ollama",
+      "tokens": 0
+    },
+    {
+      "role": "user",
+      "content": "sabes de c#",
+      "timestamp": "2026-04-21T02:04:38.068Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Sí, tengo experiencia en C#. C# es un lenguaje de programación de propósito general desarrollado por Microsoft. Aquí te dejo algunas de las características principales y algunas tareas útiles:\n\n1. **Tipos de datos**: C# tiene varios tipos de datos incluyendo enteros, flotantes, caracteres, cadenas, booleanos, estructuras, interfaces, delegados, enumeraciones, interfaces, tipos genéricos, etc.\n\n2. **Control de flujo**: Los controladores de flujo son muy importantes para el desarrollo de aplicaciones. C# proporciona estructuras como `if`, `else`, `switch`, `while`, `for`, `foreach`, etc.\n\n3. **Funciones y métodos**: C# es un lenguaje orientado a objetos, por lo que se utiliza mucho en la programación de aplicaciones. Las funciones y métodos son declaradas utilizando la palabra clave `public` o `private`, entre otras cosas.\n\n4. **Clases y objetos**: C# es un lenguaje orientado a objetos, por lo que se utiliza mucho en la programación de aplicaciones. Las clases y objetos son fundamentales para el manejo de datos y comportamientos.\n\n5. **Programación en la web**: C# puede ser utilizado para crear aplicaciones web utilizando frameworks como ASP.NET Core y MVC.\n\n6. **Programación en la nube**: C# es compatible con la nube mediante servicios como Azure y Amazon Web Services.\n\n7. **Desarrollo de aplicaciones móviles**: C# puede ser utilizado para crear aplicaciones móviles utilizando frameworks como Xamarin.\n\n8. **Seguridad**: C# proporciona una serie de características y bibliotecas para manejar seguridad, incluyendo cifrado, autenticación, y autorización.\n\n9. **Windows Forms y WPF**: C# proporciona un conjunto de herramientas para crear interfaces gráficas de usuario (UI) utilizando Windows Forms y WPF.\n\n10. **Async/Await**: C# proporciona una sintaxis conveniente para manejar operaciones asincrónicas, lo que facilita la implementación de aplicaciones que resuelven tareas que demoran más tiempo.\n\nEstos son solo algunos de los principales conceptos y características de C#. C# es un lenguaje de programación de alto nivel que es ampliamente utilizado en aplicaciones de todo tipo, desde el desarrollo de aplicaciones web hasta el desarrollo de aplicaciones móviles.",
+      "timestamp": "2026-04-21T02:05:16.394Z",
+      "provider": "ollama",
+      "tokens": 0
+    },
+    {
+      "role": "user",
+      "content": "regalme informacion del sistema",
+      "timestamp": "2026-04-21T02:05:42.869Z"
+    },
+    {
+      "role": "assistant",
+      "content": "¡Por supuesto! Aquí tienes una lista de información sobre el sistema de tu equipo:\n\n1. **Sistema Operativo**: Puedes obtener información sobre el sistema operativo usando la función `nexus_system_os_info()`.\n2. **Plataforma**: La plataforma es la versión del sistema operativo.\n3. **Arquitectura**: La arquitectura es el tipo de procesador que usa el sistema operativo.\n4. **Versión**: La versión del sistema operativo.\n5. **Nombre del Sistema**: El nombre del sistema operativo.\n6. **Nombre del Proceso**: El nombre del proceso que está ejecutando el script de C#.\n7. **Directorio de Ejecución**: El directorio de ejecución donde está ejecutando el script de C#.\n8. **Memoria**: La memoria utilizada por el script de C#.\n9. **Cores**: El número de cores disponibles.\n10. **Modelo del Proceso**: El modelo del proceso.\n11. **Velocidad del Proceso**: La velocidad del proceso.\n12. **Tiempo de Ejecución**: El tiempo de ejecución del script de C#.\n13. **Nombre de Usuario**: El nombre del usuario que ejecuta el script de C#.\n14. **Dirección IP**: La dirección IP del equipo.\n\nPara obtener esta información, simplemente ejecuta la función `nexus_system_os_info()` en tu script de C#.",
+      "timestamp": "2026-04-21T02:07:02.757Z",
+      "provider": "ollama",
+      "tokens": 0
+    },
+    {
+      "role": "user",
+      "content": "hola",
+      "timestamp": "2026-04-22T02:51:42.268Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I assist you with your programming or computer science questions today?\n",
+      "timestamp": "2026-04-22T02:51:52.945Z",
+      "provider": "ollama",
+      "tokens": 0
+    },
+    {
+      "role": "user",
+      "content": "hablame en español",
+      "timestamp": "2026-04-22T02:52:11.309Z"
+    },
+    {
+      "role": "assistant",
+      "content": "De acuerdo a mí, estoy programado para responder preguntas relacionadas con la ciencia de la computación. ¿Puedo ayudarte en alguna pregunta de programación o ciencia de la computación?\n",
+      "timestamp": "2026-04-22T02:52:21.184Z",
+      "provider": "ollama",
+      "tokens": 0
+    },
+    {
+      "role": "user",
+      "content": "regalme informacion del sistema",
+      "timestamp": "2026-04-22T02:53:41.176Z"
+    },
+    {
+      "role": "assistant",
+      "content": "```json\n{\n  \"name\": \"nexus_system_info\",\n  \"arguments\": {}\n}\n```",
+      "timestamp": "2026-04-22T02:54:21.557Z",
+      "provider": "ollama",
+      "tokens": 0
     }
   ],
   "totalTokens": 20451,
-  "messageCount": 42,
-  "lastUpdated": "2026-04-21T00:39:19.171Z"
+  "messageCount": 49,
+  "lastUpdated": "2026-04-22T02:54:21.557Z"
 }

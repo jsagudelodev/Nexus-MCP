@@ -1,5 +1,11 @@
 # Nexus-MCP Configuration
 # Copy this file to config.yaml and customize
+#
+# Environment Variable Substitution:
+# You can use ${VAR_NAME} syntax to substitute environment variables
+# Example: password: "${DB_PASSWORD}" will use the DB_PASSWORD env var
+#
+# Set environment variables in .env file or system environment
 
 # ================================
 # Server Configuration
@@ -7,8 +13,8 @@
 server:
   name: "nexus-mcp"
   version: "1.0.0"
-  log_level: "info"
-  environment: "development"
+  log_level: "${NEXUS_LOG_LEVEL:-info}"  # Uses NEXUS_LOG_LEVEL env var, defaults to "info"
+  environment: "${NODE_ENV:-development}"
 
 # ================================
 # Logging Configuration

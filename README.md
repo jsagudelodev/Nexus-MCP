@@ -80,6 +80,56 @@ Add to your Claude Desktop config:
 }
 ```
 
+### Using Environment Variable Substitution
+
+Create a `.env` file:
+
+```env
+NEXUS_LOG_LEVEL=debug
+DB_PASSWORD=secret123
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Use in `config.yaml`:
+
+```yaml
+server:
+  log_level: "${NEXUS_LOG_LEVEL:-info}"
+database:
+  postgresql:
+    password: "${DB_PASSWORD}"
+ai:
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+```
+
+Validate required variables before starting:
+
+```typescript
+import { validateEnvironment, loadConfig } from './config.js';
+
+validateEnvironment(['ANTHROPIC_API_KEY', 'DB_PASSWORD']);
+const config = loadConfig();
+```
+
+### Using Contextual Logger
+
+```typescript
+import { ContextualLogger } from './logger.js';
+import path from 'path';
+
+const workDir = path.join(process.cwd(), 'logs');
+const logger = ContextualLogger.create(workDir, 'workflow-001');
+
+logger.info('workflow.started', { step: 1 });
+logger.info('processing.data', { items: 100 });
+logger.info('workflow.completed', { success: true });
+
+logger.close();
+```
+
+See [Configuration Improvements Guide](./docs/config-improvements.md) for complete details.
+
 ## 📦 **Features**
 
 ### Filesystem Tools
@@ -172,11 +222,54 @@ Nexus-MCP is built with **architectural excellence** in mind, designed for produ
 
 See [Architectural Principles](./docs/architectural-principles.md) for complete details.
 
-## 📚 **Documentation**
+## � **Configuration & Logging Enhancements**
+
+Nexus-MCP includes advanced configuration and logging features inspired by production systems:
+
+### Environment Variable Substitution
+
+Use `${VAR_NAME}` syntax in YAML files to substitute environment variables:
+
+```yaml
+server:
+  log_level: "${NEXUS_LOG_LEVEL:-info}"  # Uses env var, defaults to "info"
+database:
+  postgresql:
+    password: "${DB_PASSWORD}"  # Required - warns if not set
+```
+
+**Benefits:**
+- Keep sensitive data (API keys, passwords) in environment variables
+- Use different configurations for different environments
+- Override specific values without editing YAML files
+
+### Contextual Logger
+
+Workflow-specific logging with separate log files per context:
+
+```typescript
+import { ContextualLogger } from './logger.js';
+
+const logger = ContextualLogger.create(workDir, 'migration-123');
+logger.info('workflow.started', { step: 1 });
+logger.info('extract.completed', { schemaPath: '/path/to/schema.json' });
+logger.close();
+```
+
+**Benefits:**
+- Trace end-to-end workflows (migrations, tasks, batch jobs)
+- Debug complex multi-step operations
+- Keep logs organized by workflow/correlation ID
+- Historical analysis of specific workflows
+
+**Documentation:** See [Configuration Improvements Guide](./docs/config-improvements.md) for complete details.
+
+## � **Documentation**
 
 - [Getting Started Guide](./docs/getting-started.md) - Quick start and basic usage
 - [Architecture Documentation](./docs/architecture.md) - System architecture and design
 - [Architectural Principles](./docs/architectural-principles.md) - Design principles and best practices
+- [Configuration Improvements](./docs/config-improvements.md) - Environment variable substitution & contextual logging
 - [API Reference](./docs/api-reference.md) - Complete API documentation
 - [Tools Reference](./docs/tools-reference.md) - Detailed tool documentation
 - [Roadmap](./ROADMAP.md) - Development roadmap and progress
@@ -296,6 +389,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Anthropic Claude](https://www.anthropic.com/)
 - [MCP SDK TypeScript](https://github.com/modelcontextprotocol/typescript-sdk)
+- **App Migración SOUL** - Configuration patterns and contextual logging inspiration
 
 ## 📞 **Support**
 

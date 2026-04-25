@@ -96,7 +96,7 @@ const ChatMessageSchema = z.object({
 const OllamaChatSchema = z.object({
   prompt: z.string().optional().describe('The prompt to send to the model (ignored when messages is provided)'),
   messages: z.array(ChatMessageSchema).optional().describe('Conversation history for multi-turn chat'),
-  model: z.string().default('llama3.2').describe('Ollama model name (e.g., llama3.2, mistral, codellama)'),
+  model: z.string().default('deepseek-coder:1.3b').describe('Ollama model name (e.g., deepseek-coder:1.3b, llama3.2, mistral, codellama)'),
   stream: z.boolean().default(false).describe('Whether to stream the response'),
   options: z.object({
     temperature: z.number().min(0).max(1).default(0.7).optional(),

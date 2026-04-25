@@ -210,11 +210,12 @@ export interface SystemConfig {
  */
 export interface AIConfig {
   enabled: boolean;
-  default_provider: 'anthropic' | 'openai';
+  default_provider: 'anthropic' | 'openai' | 'ollama';
   max_tokens: number;
   temperature: number;
   top_p: number;
   stream: boolean;
+  ollama_model?: string;
   anthropic: {
     api_key?: string;
     model: string;
